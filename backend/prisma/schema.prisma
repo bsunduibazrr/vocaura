@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Word {
+  id          String   @id @default(cuid())
+  english     String
+  mongolian   String
+  level       String   @default("B2")
+  example     String?
+  addedAt     DateTime @default(now())
+  isAutoAdded Boolean  @default(false)
+  source      String   @default("user")
+  deletedAt   DateTime?
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  repetitions Int      @default(0)
+  interval    Int      @default(0)
+  ease        Float    @default(2.5)
+  nextReviewAt DateTime?
+  lastReviewedAt DateTime?
+  correctCount Int     @default(0)
+  wrongCount   Int     @default(0)
+  mastery      Int     @default(0)
+}
+
+model QuizResult {
+  id           String   @id @default(cuid())
+  date         String
+  score        Int
+  totalWords   Int
+  correctWords String
+  wrongWords   String
+  takenAt      DateTime @default(now())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+}
+
+model UserProgress {
+  id            String   @id @default(cuid())
+  xp            Int      @default(0)
+  level         Int      @default(1)
+  streak        Int      @default(0)
+  longestStreak Int      @default(0)
+  updatedAt     DateTime @updatedAt
+  userId        String?  @unique
+  user          User?    @relation(fields: [userId], references: [id])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  key         String
+  title       String
+  description String
+  unlockedAt  DateTime @default(now())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@unique([userId, key])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  words        Word[]
+  quizResults  QuizResult[]
+  progress     UserProgress?
+  achievements Achievement[]
+}
