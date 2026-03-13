@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FiInfo, FiPlusCircle, FiRefreshCw, FiZap, FiCalendar, FiTrendingUp, FiLightbulb } from "react-icons/fi";
+import { FiInfo, FiPlusCircle, FiRefreshCw, FiZap, FiCalendar, FiTrendingUp } from "react-icons/fi";
+import { FaRegLightbulb } from "react-icons/fa";
 
 const sections = [
   {
@@ -47,7 +48,7 @@ const sections = [
   }
 ];
 
-const icons = [FiInfo, FiCalendar, FiPlusCircle, FiRefreshCw, FiZap, FiCalendar, FiTrendingUp, FiLightbulb];
+const icons = [FiInfo, FiCalendar, FiPlusCircle, FiRefreshCw, FiZap, FiCalendar, FiTrendingUp, FaRegLightbulb];
 
 export default function GuidePage() {
   const [open, setOpen] = useState<Record<number, boolean>>({});
