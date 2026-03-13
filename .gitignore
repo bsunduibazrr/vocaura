@@ -1,0 +1,12 @@
+node_modules
+.next
+dist
+build
+.env
+.env.local
+frontend/.next
+backend/node_modules
+frontend/node_modules
+backend/.env
+frontend/.env.local
+backend/prisma/dev.db
