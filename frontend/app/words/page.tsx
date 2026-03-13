@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchWordsByDate } from "../../lib/api";
 import type { Word } from "../../lib/types";
@@ -13,7 +13,7 @@ function todayString() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function WordsArchivePage() {
+function WordsArchiveContent() {
   const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const [date, setDate] = useState(todayString());
@@ -79,5 +79,19 @@ export default function WordsArchivePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function WordsArchivePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-5xl px-6 py-12">
+          <div className="h-40 rounded-2xl border border-border bg-surface animate-pulse" />
+        </div>
+      }
+    >
+      <WordsArchiveContent />
+    </Suspense>
   );
 }
