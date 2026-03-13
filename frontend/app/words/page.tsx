@@ -7,6 +7,8 @@ import type { Word } from "../../lib/types";
 import { useAuth } from "../../components/AuthProvider";
 import AuthGate from "../../components/AuthGate";
 
+export const dynamic = "force-dynamic";
+
 function todayString() {
   return new Date().toISOString().slice(0, 10);
 }
