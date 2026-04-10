@@ -6,7 +6,6 @@ import { FiPlusCircle, FiZap, FiBarChart2 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import ParallaxWrap from "../components/ParallaxWrap";
 import WordCard from "../components/WordCard";
-import CountdownTimer from "../components/CountdownTimer";
 import StreakBadge from "../components/StreakBadge";
 import type { Word, TodayStats } from "../lib/types";
 import {
@@ -180,8 +179,6 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <CountdownTimer />
-
       <motion.div
         className="grid gap-3 md:grid-cols-3"
         initial="hidden"
@@ -199,7 +196,7 @@ export default function DashboardPage() {
           },
           {
             href: "/quiz",
-            label: "Go to 22:00 quiz",
+            label: "Take a quiz",
             icon: <FiZap />,
           },
           {

@@ -2,35 +2,51 @@ import { Word } from "@prisma/client";
 import { QuizQuestion, generateFunnyQuiz } from "./aiService";
 import { buildBossBattle, buildFillBlankQuestions, buildSpellingQuestions, toModeQuestions, ModeQuestion } from "./quizModes";
 
-const fallbackQuestions: QuizQuestion[] = [
-  {
-    question: "'Diligent' гэдэг үгийн хамгийн зөв утга аль нь вэ?",
-    correctAnswer: "Шаргуу хөдөлмөрч",
-    options: ["Шаргуу хөдөлмөрч", "Залхуу", "Өндөр", "Тэнэг"],
-    funnyHint: "Шаргуу байвал шалгалтын оноо өөрөө дээшлэнэ!"
-  },
-  {
-    question: "'Scarce' гэдэг нь ямар утгатай вэ?",
-    correctAnswer: "Ховор",
-    options: ["Ховор", "Хатуу", "Баян", "Урт"],
-    funnyHint: "Манайд ч заримдаа бяслаг 'scarce' байдаг шүү."
-  },
-  {
-    question: "'Benefit' гэдэг үгийг зөв сонго?",
-    correctAnswer: "Ашиг тус",
-    options: ["Ашиг тус", "Алдагдал", "Айдас", "Сандрал"],
-    funnyHint: "Шинэ үг сурах нь том benefit."
+function shuffle<T>(items: T[]): T[] {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
   }
-];
+  return next;
+}
+
+function buildLocalQuizQuestions(words: Word[]): QuizQuestion[] {
+  const clean = words.filter((word) => word.english && word.mongolian);
+  if (clean.length === 0) {
+    return [];
+  }
+
+  const pool = shuffle(clean);
+
+  return pool.slice(0, Math.min(10, pool.length)).map((word, index) => {
+    const distractors = shuffle(
+      clean
+        .filter((item) => item.id !== word.id && item.mongolian !== word.mongolian)
+        .map((item) => item.mongolian)
+    ).slice(0, 3);
+
+    const options = shuffle([word.mongolian, ...distractors]);
+
+    return {
+      question: `${index + 1}. "${word.english}" гэдэг үгийн хамгийн ойр утга аль нь вэ?`,
+      correctAnswer: word.mongolian,
+      options,
+      funnyHint: `"${word.english}"-ийг цээжлэхгүй бол дараа нь чамайг дахиад барина шүү.`
+    };
+  });
+}
 
 export async function buildQuizQuestions(words: Word[]): Promise<QuizQuestion[]> {
-  if (words.length === 0) return fallbackQuestions;
+  if (words.length === 0) return [];
   try {
     const ai = await generateFunnyQuiz(words);
-    if (ai.length >= 3) return ai;
-    return [...ai, ...fallbackQuestions].slice(0, Math.max(3, words.length));
+    if (ai.length >= 3) {
+      return shuffle(ai).slice(0, Math.min(10, ai.length));
+    }
+    return buildLocalQuizQuestions(words);
   } catch (error) {
-    return fallbackQuestions;
+    return buildLocalQuizQuestions(words);
   }
 }
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { FiLogIn } from "react-icons/fi";
-import { SignInButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 
 export default function AuthGate({ title, message }: { title: string; message: string }) {
   const { user, isLoaded } = useUser();
@@ -26,14 +27,14 @@ export default function AuthGate({ title, message }: { title: string; message: s
       >
         <h2 className="font-display text-2xl">{title}</h2>
         <p className="mt-3 text-sm text-muted">{message}</p>
-        <SignInButton mode="modal">
-          <motion.button
-            whileTap={{ scale: 0.98 }}
+        <motion.div whileTap={{ scale: 0.98 }}>
+          <Link
+            href="/login"
             className="mt-6 inline-flex items-center gap-2 rounded-full border border-accent bg-accent/15 px-6 py-3 text-sm font-semibold text-accent transition hover:bg-accent/25"
           >
             <FiLogIn /> Sign in to continue
-          </motion.button>
-        </SignInButton>
+          </Link>
+        </motion.div>
       </motion.div>
     </div>
   );

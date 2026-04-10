@@ -13,8 +13,8 @@ const sections = [
   },
   {
     title: "Daily flow (recommended)",
-    en: "Each day, add 10–20 words in the morning, review the queue in the afternoon, and take the quiz at night. This habit keeps your review load stable and your memory strong. If you skip a day, your streak resets and the review queue grows.",
-    mn: "Өдөр бүр өглөө 10–20 үг нэмээд, үдээс хойш review‑оо хийж, орой quiz‑аа өгвөл хамгийн үр дүнтэй. Энэ дадал нь давталтын ачааллыг тогтвортой байлгаж, ой тогтоолтыг хүчтэй болгоно. Өдөр алгасвал streak reset болно, review queue өснө."
+    en: "Each day, add a few words, review the queue, and take a quiz whenever you are ready. This habit keeps your review load stable and your memory strong. If you skip a day, your streak resets and the review queue grows.",
+    mn: "Өдөр бүр хэдэн үг нэмээд, review‑оо хийж, бэлэн болсон үедээ quiz‑аа өгвөл хамгийн үр дүнтэй. Энэ дадал нь давталтын ачааллыг тогтвортой байлгаж, ой тогтоолтыг хүчтэй болгоно. Өдөр алгасвал streak reset болно, review queue өснө."
   },
   {
     title: "How to add words",
@@ -32,9 +32,9 @@ const sections = [
     mn: "Fun Quiz (сонгох асуулт), Spelling (монголоос англи үгийг бичих), Fill‑in (өгүүлбэрийн хоосон орон бөглөх), Boss Battle (7 хоногийн холимог шалгалт) горимоос сонгоно. Хүсвэл Timed mode‑ыг асааж дарамттай шалгалт өгч, Speaking mode‑оор дуугаар хариулж болно."
   },
   {
-    title: "Daily quiz time",
-    en: "The daily quiz opens at 10:00 AM (local time). You can still access Boss Battle any time, but the daily quiz is intended for a consistent morning routine.",
-    mn: "Өдрийн шалгалт 10:00 цагт (орон нутгийн цагаар) нээгдэнэ. Boss Battle‑ийг хүссэн үедээ өгч болох ч өдөр тутмын quiz‑ийг өглөө тогтмол өгөхийг зөвлөж байна."
+    title: "Quiz availability",
+    en: "You can take quizzes any time. As soon as you add words, they become eligible for quiz generation and you can refresh for a new set of questions.",
+    mn: "Quiz‑ээ хүссэн үедээ өгч болно. Үг нэммэгц тэр үгс шууд quiz-д оролцох боломжтой бөгөөд шинэ асуултын багц үүсгэж refresh хийж болно."
   },
   {
     title: "Stats and mastery",
@@ -58,7 +58,7 @@ export default function GuidePage() {
       <div className="space-y-3">
         <h1 className="font-display text-3xl">How to use Vocaura</h1>
         <p className="text-sm text-muted">
-          A clear walkthrough of how the app works, the daily routine, and how quizzes and reviews are scheduled.
+          A clear walkthrough of how the app works, the daily routine, and how quizzes and reviews behave.
         </p>
       </div>
 

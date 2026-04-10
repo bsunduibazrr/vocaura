@@ -4,24 +4,15 @@ import { prisma } from "../db/prisma";
 import { buildModeQuestions } from "../services/quizService";
 import { generateFunnyFeedback } from "../services/aiService";
 import { DEFAULT_TIMEZONE, getDayBounds, getZonedDateString } from "../services/timeService";
-import { isQuizAvailable, setQuizAvailable } from "../services/schedulerService";
 import { addXp } from "../services/progressService";
 import { ensureAchievements } from "../services/achievementService";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 
 const router = Router();
-const quizCache = new Map<string, ReturnType<typeof buildModeQuestions>>();
 
 router.get("/generate", requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const dateKey = getZonedDateString(new Date(), DEFAULT_TIMEZONE);
     const mode = String(req.query.mode ?? "standard") as "standard" | "spelling" | "fill" | "boss";
-    const cacheKey = `${req.userId}:${dateKey}:${mode}`;
-    const cached = quizCache.get(cacheKey);
-    if (cached) {
-      res.json(await cached);
-      return;
-    }
 
     let words;
     if (mode === "boss") {
@@ -34,9 +25,7 @@ router.get("/generate", requireAuth, async (req: AuthRequest, res, next) => {
       });
     }
 
-    const questionsPromise = buildModeQuestions(mode, words);
-    quizCache.set(cacheKey, questionsPromise);
-    res.json(await questionsPromise);
+    res.json(await buildModeQuestions(mode, words));
   } catch (error) {
     next(error);
   }
@@ -82,8 +71,6 @@ router.post("/submit", requireAuth, async (req: AuthRequest, res, next) => {
     await addXp(req.userId!, score * 5);
     await ensureAchievements(req.userId!);
 
-    setQuizAvailable(dateKey, true);
-
     res.json({
       score,
       total,
@@ -118,21 +105,7 @@ router.get("/result/today", requireAuth, async (req: AuthRequest, res, next) => 
 
 router.get("/status", requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const dateKey = getZonedDateString(new Date(), DEFAULT_TIMEZONE);
-    let available = isQuizAvailable(dateKey);
-    if (!available) {
-      const formatter = new Intl.DateTimeFormat("en-US", {
-        timeZone: DEFAULT_TIMEZONE,
-        hour: "2-digit",
-        hour12: false
-      });
-      const hour = Number(formatter.format(new Date()));
-      if (hour >= 22) {
-        available = true;
-        setQuizAvailable(dateKey, true);
-      }
-    }
-    res.json({ available });
+    res.json({ available: true });
   } catch (error) {
     next(error);
   }

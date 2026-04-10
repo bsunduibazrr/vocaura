@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { FiHome, FiPlusCircle, FiBarChart2 } from "react-icons/fi";
+import { FiBarChart2, FiHome, FiPlusCircle, FiRefreshCw } from "react-icons/fi";
 import { motion } from "framer-motion";
 import ParallaxWrap from "../../components/ParallaxWrap";
 import QuizGame from "../../components/QuizGame";
 import ShareCard from "../../components/ShareCard";
 import type { QuizQuestion, QuizResult } from "../../lib/types";
-import { fetchQuizQuestions, fetchQuizStatus, submitQuiz } from "../../lib/api";
+import { fetchQuizQuestions, submitQuiz } from "../../lib/api";
 import { useUser } from "@clerk/nextjs";
 import AuthGate from "../../components/AuthGate";
 
@@ -22,7 +22,6 @@ const statusLabel = (percent: number) => {
 export default function QuizPage() {
   const { user, isLoaded } = useUser();
   const authLoading = !isLoaded;
-  const [available, setAvailable] = useState(false);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,30 +29,26 @@ export default function QuizPage() {
   const [timed, setTimed] = useState(false);
   const [speech, setSpeech] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
         if (!user) {
-          setAvailable(false);
           setQuestions([]);
           return;
         }
-        const status = await fetchQuizStatus();
-        setAvailable(status.available);
-        if (status.available) {
-          const list = await fetchQuizQuestions(mode);
-          setQuestions(list);
-        }
+        const list = await fetchQuizQuestions(mode);
+        setQuestions(list);
       } catch (error) {
-        setAvailable(false);
         setQuestions([]);
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [mode, user]);
+  }, [mode, user, reloadKey]);
 
   useEffect(() => {
     setResult(null);
@@ -84,12 +79,14 @@ export default function QuizPage() {
     return <div className="mx-auto max-w-4xl px-6 py-16 text-center text-muted">Loading quiz...</div>;
   }
 
-  if (!available) {
+  if (!loading && questions.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-16 space-y-6">
-        <div className="rounded-2xl border border-border bg-surface p-10 text-center">
-          <h2 className="font-display text-2xl text-text">Quiz is not open yet</h2>
-          <p className="mt-3 text-muted">It opens automatically at 22:00.</p>
+        <div className="rounded-3xl border border-border bg-surface p-8 text-center sm:p-10">
+          <h2 className="font-display text-2xl text-text">Эхлээд үгээ нэмнэ үү</h2>
+          <p className="mt-3 text-muted">
+            Quiz үүсгэх үг алга байна. Add words хэсэгт очоод үгээ нэмсний дараа шууд quiz өгч болно.
+          </p>
         </div>
         <motion.div
           className="grid gap-3 md:grid-cols-3"
@@ -186,9 +183,9 @@ export default function QuizPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12 space-y-8">
-      <div className="rounded-2xl border border-border bg-surface p-6 space-y-4">
-        <div className="flex flex-wrap gap-2">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12 space-y-8">
+      <div className="rounded-3xl border border-border bg-surface p-5 sm:p-6 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
           {[
             { id: "standard", label: "Fun Quiz" },
             { id: "spelling", label: "Spelling" },
@@ -207,15 +204,25 @@ export default function QuizPage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-4 text-xs text-muted">
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={timed} onChange={(e) => setTimed(e.target.checked)} />
-            Timed mode
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={speech} onChange={(e) => setSpeech(e.target.checked)} />
-            Speaking mode
-          </label>
+        <div className="flex flex-col gap-3 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={timed} onChange={(e) => setTimed(e.target.checked)} />
+              Timed mode
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={speech} onChange={(e) => setSpeech(e.target.checked)} />
+              Speaking mode
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReloadKey((prev) => prev + 1)}
+            className="inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-sm text-text transition hover:border-accent hover:text-accent"
+          >
+            <FiRefreshCw />
+            New questions
+          </button>
         </div>
       </div>
       <QuizGame questions={questions} onComplete={handleComplete} timed={timed} timeLimit={20} enableSpeech={speech} />

@@ -24,7 +24,6 @@ const FALLBACK_TRANSLATIONS: Record<string, string> = {
   convert: "хөрвүүлэх",
   cooperate: "хамтрах",
   criteria: "шалгуур",
-  decline: "буурах",
   demonstrate: "харуулах",
   economy: "эдийн засаг",
   emerge: "бий болох",
