@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { ApiError } from "../lib/api";
+import { getAuthToken } from "../lib/authToken";
 
 export default function PackTools() {
   const [status, setStatus] = useState<string | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-  const token = typeof window !== "undefined" ? window.localStorage.getItem("vocaura_token") : null;
 
   const handleExport = async () => {
     try {
+      const token = await getAuthToken();
       const res = await fetch(`${apiBase}/api/packs/export?days=7`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
@@ -38,6 +39,7 @@ export default function PackTools() {
     if (!file) return;
     const text = await file.text();
     try {
+      const token = await getAuthToken();
       const payload = JSON.parse(text);
       const res = await fetch(`${apiBase}/api/packs/import`, {
         method: "POST",

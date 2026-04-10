@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchWordsByDate } from "../../lib/api";
 import type { Word } from "../../lib/types";
-import { useAuth } from "../../components/AuthProvider";
+import { useUser } from "@clerk/nextjs";
 import AuthGate from "../../components/AuthGate";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,8 @@ function todayString() {
 }
 
 function WordsArchiveContent() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoaded } = useUser();
+  const authLoading = !isLoaded;
   const searchParams = useSearchParams();
   const [date, setDate] = useState(todayString());
   const [words, setWords] = useState<Word[]>([]);

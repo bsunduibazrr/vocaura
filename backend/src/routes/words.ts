@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db/prisma";
 import { getDayBounds, DEFAULT_TIMEZONE, getMonthBounds } from "../services/timeService";
-import { suggestTranslation } from "../services/aiService";
+import { generateExampleSentence, suggestTranslation } from "../services/aiService";
 import { addXp } from "../services/progressService";
 import { ensureAchievements } from "../services/achievementService";
 import { requireAuth, AuthRequest } from "../middleware/auth";
@@ -11,9 +11,10 @@ const router = Router();
 
 const createWordSchema = z.object({
   english: z.string().min(1),
-  mongolian: z.string().min(1),
+  mongolian: z.string().min(1).optional(),
   level: z.enum(["B1", "B2"]).optional(),
-  example: z.string().optional()
+  example: z.string().optional(),
+  autoFill: z.boolean().optional()
 });
 
 const updateWordSchema = z.object({
@@ -83,25 +84,61 @@ router.get("/weak", requireAuth, async (req: AuthRequest, res, next) => {
   }
 });
 
-router.get("/suggest", async (req, res, next) => {
+router.get("/suggest", requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const query = String(req.query.q ?? "");
-    const suggestion = await suggestTranslation(query);
+    const suggestion = await suggestTranslation(query, req.userId);
     res.json(suggestion ?? { english: query, mongolian: "" });
   } catch (error) {
     res.json({ english: String(req.query.q ?? ""), mongolian: "" });
   }
 });
 
+router.get("/example", requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const english = String(req.query.english ?? "").trim();
+    const mongolian = String(req.query.mongolian ?? "").trim();
+    if (!english) {
+      res.status(400).json({ error: "english is required" });
+      return;
+    }
+    const generated = await generateExampleSentence(english, mongolian);
+    if (!generated?.example) {
+      res.json({ example: "" });
+      return;
+    }
+    res.json({ example: generated.example });
+  } catch (error) {
+    res.json({ example: "" });
+  }
+});
+
 router.post("/", requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const parsed = createWordSchema.parse(req.body);
+    const allowAutoFill = parsed.autoFill !== false;
+    let resolvedMongolian = parsed.mongolian?.trim() ?? "";
+    if (!resolvedMongolian && allowAutoFill) {
+      const suggestion = await suggestTranslation(parsed.english, req.userId);
+      resolvedMongolian = suggestion?.mongolian?.trim() ?? "";
+    }
+    if (!resolvedMongolian) {
+      res.status(400).json({ error: "mongolian is required" });
+      return;
+    }
+
+    let resolvedExample = parsed.example?.trim() ?? "";
+    if (!resolvedExample && allowAutoFill) {
+      const generated = await generateExampleSentence(parsed.english, resolvedMongolian);
+      resolvedExample = generated?.example?.trim() ?? "";
+    }
+
     const word = await prisma.word.create({
       data: {
         english: parsed.english,
-        mongolian: parsed.mongolian,
+        mongolian: resolvedMongolian,
         level: parsed.level ?? "B2",
-        example: parsed.example,
+        example: resolvedExample || undefined,
         source: "user",
         isAutoAdded: false,
         nextReviewAt: new Date(),

@@ -16,13 +16,13 @@ import {
 } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
 import ToastHost from "./ToastHost";
-import AuthModal from "./AuthModal";
-import { useAuth } from "./AuthProvider";
-import { claimLegacyWords } from "../lib/api";
+import { SignInButton, SignUpButton, useAuth, useUser } from "@clerk/nextjs";
+import { ApiError, claimLegacyWords } from "../lib/api";
 import { toast } from "../lib/toast";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, openAuth, logout } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [claiming, setClaiming] = useState(false);
 
@@ -77,12 +77,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             </nav>
             {!user && (
-              <button
-                onClick={() => openAuth("login")}
-                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-text transition duration-150 hover:border-accent hover:text-accent"
-              >
-                <FiLogIn /> Login
-              </button>
+              <div className="flex items-center gap-2">
+                <SignInButton mode="modal">
+                  <button className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-text transition duration-150 hover:border-accent hover:text-accent">
+                    <FiLogIn /> Login
+                  </button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button className="inline-flex items-center gap-2 rounded-full border border-accent bg-accent/10 px-4 py-2 text-accent transition duration-150 hover:bg-accent/20">
+                    <FiUser /> Sign up
+                  </button>
+                </SignUpButton>
+              </div>
             )}
             {user && (
               <div className="relative">
@@ -91,7 +97,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-text transition duration-150 hover:border-accent hover:text-accent"
                 >
                   <FiUser />
-                  <span className="max-w-[140px] truncate">{user.email}</span>
+                  <span className="max-w-[140px] truncate">{user.primaryEmailAddress?.emailAddress}</span>
                   <FiChevronDown className={`transition ${menuOpen ? "rotate-180" : ""}`} />
                 </button>
                 <AnimatePresence>
@@ -104,8 +110,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       className="absolute right-0 mt-3 w-64 rounded-2xl border border-border bg-surface p-4 shadow-[0_24px_60px_rgba(0,0,0,0.45)]"
                     >
                       <p className="text-xs uppercase tracking-[0.3em] text-muted">Profile</p>
-                      <p className="mt-2 text-sm text-text">{user.email}</p>
-                      <p className="text-xs text-muted">Member since {user.createdAt.slice(0, 10)}</p>
+                      <p className="mt-2 text-sm text-text">{user.primaryEmailAddress?.emailAddress}</p>
+                      <p className="text-xs text-muted">
+                        Member since {user.createdAt ? new Date(user.createdAt).toLocaleDateString("mn-MN") : "-"}
+                      </p>
                       <button
                         onClick={async () => {
                           setClaiming(true);
@@ -113,7 +121,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             const res = await claimLegacyWords();
                             toast(`Restored ${res.claimed} legacy words`, "success");
                           } catch (error) {
-                            toast("Failed to restore legacy words", "error");
+                            const message =
+                              error instanceof ApiError
+                                ? error.message
+                                : "Failed to restore legacy words";
+                            toast(message, "error");
                           } finally {
                             setClaiming(false);
                           }
@@ -125,7 +137,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <button
                         onClick={() => {
                           setMenuOpen(false);
-                          logout();
+                          signOut();
                         }}
                         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-accent2 bg-accent2/15 px-4 py-2 text-sm text-accent2 transition hover:bg-accent2/25"
                       >
@@ -142,7 +154,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       <main className="flex-1">{children}</main>
       <ToastHost />
-      <AuthModal />
     </div>
   );
 }

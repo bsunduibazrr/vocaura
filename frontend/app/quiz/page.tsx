@@ -9,7 +9,7 @@ import QuizGame from "../../components/QuizGame";
 import ShareCard from "../../components/ShareCard";
 import type { QuizQuestion, QuizResult } from "../../lib/types";
 import { fetchQuizQuestions, fetchQuizStatus, submitQuiz } from "../../lib/api";
-import { useAuth } from "../../components/AuthProvider";
+import { useUser } from "@clerk/nextjs";
 import AuthGate from "../../components/AuthGate";
 
 const statusLabel = (percent: number) => {
@@ -20,7 +20,8 @@ const statusLabel = (percent: number) => {
 };
 
 export default function QuizPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoaded } = useUser();
+  const authLoading = !isLoaded;
   const [available, setAvailable] = useState(false);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);

@@ -8,11 +8,12 @@ import { fetchTodayWords } from "../../lib/api";
 import { FiHome, FiZap, FiBarChart2 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import ParallaxWrap from "../../components/ParallaxWrap";
-import { useAuth } from "../../components/AuthProvider";
+import { useUser } from "@clerk/nextjs";
 import AuthGate from "../../components/AuthGate";
 
 export default function AddPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoaded } = useUser();
+  const authLoading = !isLoaded;
   const [todayWords, setTodayWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
 

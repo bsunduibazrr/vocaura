@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { clerkMiddleware } from "@clerk/express";
 import wordsRouter from "./routes/words";
 import quizRouter from "./routes/quiz";
 import statsRouter from "./routes/stats";
@@ -18,7 +19,13 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(clerkMiddleware());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_ORIGIN || "http://localhost:3000",
+    credentials: true
+  }),
+);
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req, res) => {

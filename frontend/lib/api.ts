@@ -1,4 +1,5 @@
 import type { Word, QuizQuestion, QuizResult, DayStats, TodayStats } from "./types";
+import { getAuthToken } from "./authToken";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -12,20 +13,18 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = typeof window !== "undefined" ? window.localStorage.getItem("vocaura_token") : null;
+  const token = await getAuthToken();
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
+    credentials: "include",
     cache: "no-store",
     ...options
   });
 
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("vocaura:auth-required"));
-    }
     const text = await response.text();
     let message = text || "Request failed";
     try {
@@ -44,18 +43,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return JSON.parse(text) as T;
 }
 
-export async function register(payload: { email: string; password: string }): Promise<{ token: string; email: string }> {
-  return request("/api/auth/register", { method: "POST", body: JSON.stringify(payload) });
-}
-
-export async function login(payload: { email: string; password: string }): Promise<{ token: string; email: string }> {
-  return request("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
-}
-
-export async function fetchMe(): Promise<{ id: string; email: string; createdAt: string }> {
-  return request("/api/auth/me");
-}
-
 export async function claimLegacyWords(): Promise<{ claimed: number }> {
   return request("/api/auth/claim-legacy", { method: "POST" });
 }
@@ -68,7 +55,7 @@ export async function fetchAllWords(page = 1, limit = 20): Promise<{ total: numb
   return request(`/api/words/all?page=${page}&limit=${limit}`);
 }
 
-export async function addWord(payload: { english: string; mongolian: string; level: "B1" | "B2"; example?: string }): Promise<Word> {
+export async function addWord(payload: { english: string; mongolian: string; level: "B1" | "B2"; example?: string; autoFill?: boolean }): Promise<Word> {
   return request<Word>("/api/words", {
     method: "POST",
     body: JSON.stringify(payload)
@@ -92,6 +79,12 @@ export async function updateWord(
 
 export async function suggestWord(query: string): Promise<{ english: string; mongolian: string }> {
   return request(`/api/words/suggest?q=${encodeURIComponent(query)}`);
+}
+
+export async function generateExample(payload: { english: string; mongolian?: string }): Promise<{ example: string }> {
+  const params = new URLSearchParams({ english: payload.english });
+  if (payload.mongolian) params.set("mongolian", payload.mongolian);
+  return request(`/api/words/example?${params.toString()}`);
 }
 
 export async function fetchQuizQuestions(mode: "standard" | "spelling" | "fill" | "boss" = "standard"): Promise<QuizQuestion[]> {

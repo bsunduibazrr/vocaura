@@ -19,11 +19,12 @@ import { toast } from "../lib/toast";
 import ReviewPanel from "../components/ReviewPanel";
 import ProgressPanel from "../components/ProgressPanel";
 import AchievementPanel from "../components/AchievementPanel";
-import { useAuth } from "../components/AuthProvider";
+import { useUser } from "@clerk/nextjs";
 import AuthGate from "../components/AuthGate";
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoaded } = useUser();
+  const authLoading = !isLoaded;
   const [words, setWords] = useState<Word[]>([]);
   const [stats, setStats] = useState<TodayStats | null>(null);
   const [weakWords, setWeakWords] = useState<Word[]>([]);

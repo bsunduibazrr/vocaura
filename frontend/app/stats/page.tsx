@@ -12,11 +12,12 @@ import NotificationSetup from "../../components/NotificationSetup";
 import PackTools from "../../components/PackTools";
 import type { DayStats, HeatmapDay, TodayStats, Word } from "../../lib/types";
 import { ApiError, fetchHeatmap, fetchMastery, fetchMonthStats, fetchTodayStats, fetchWeekStats, fetchWordsByDate } from "../../lib/api";
-import { useAuth } from "../../components/AuthProvider";
+import { useUser } from "@clerk/nextjs";
 import AuthGate from "../../components/AuthGate";
 
 export default function StatsPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoaded } = useUser();
+  const authLoading = !isLoaded;
   const router = useRouter();
   const [tab, setTab] = useState<"today" | "week" | "month">("today");
   const [today, setToday] = useState<TodayStats | null>(null);

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { Word, WordLevel } from "../lib/types";
-import { addWord, deleteWord, suggestWord, updateWord } from "../lib/api";
+import { addWord, deleteWord, generateExample, suggestWord, updateWord } from "../lib/api";
 import { FiEdit2, FiTrash2, FiSave, FiX, FiFileText } from "react-icons/fi";
 import { BsWordpress } from "react-icons/bs";
 import { toast } from "../lib/toast";
@@ -25,6 +25,7 @@ export default function AddWordForm({
   const [suggestion, setSuggestion] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [example, setExample] = useState("");
+  const [autoFill, setAutoFill] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Word | null>(null);
   const [editDraft, setEditDraft] = useState<{
@@ -39,43 +40,99 @@ export default function AddWordForm({
     return Math.min(todayWords.length / target, 1);
   }, [todayWords.length]);
 
+  const mongolianRef = useRef("");
+  const recentlyAddedRef = useRef<HTMLDivElement | null>(null);
+  const safeEnglish = english ?? "";
+  const safeAutoFill = Boolean(autoFill);
+
   useEffect(() => {
-    if (!english.trim()) {
+    mongolianRef.current = mongolian;
+  }, [mongolian]);
+
+  useEffect(() => {
+    if (!safeEnglish.trim()) {
+      setSuggestion("");
+      return;
+    }
+    if (!safeAutoFill) {
       setSuggestion("");
       return;
     }
     const id = setTimeout(async () => {
       try {
-        const response = await suggestWord(english.trim());
+        const response = await suggestWord(safeEnglish.trim());
         setSuggestion(response.mongolian || "");
+        if (!mongolianRef.current.trim() && response.mongolian) {
+          setMongolian(response.mongolian);
+        }
       } catch (err) {
         setSuggestion("");
       }
     }, 500);
     return () => clearTimeout(id);
-  }, [english]);
+  }, [safeEnglish, safeAutoFill]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!english.trim() || !mongolian.trim()) {
-      setError("Please fill both English and Mongolian fields.");
+    if (!english.trim()) {
+      setError("Please fill the English field.");
+      return;
+    }
+    if (!autoFill && !mongolian.trim()) {
+      setError("Please fill the Mongolian field or enable auto-generate.");
       return;
     }
     setLoading(true);
     setError(null);
     try {
+      let resolvedMongolian = mongolian.trim();
+      if (!resolvedMongolian && autoFill) {
+        try {
+          const response = await suggestWord(english.trim());
+          resolvedMongolian = response.mongolian?.trim() || "";
+          if (resolvedMongolian) {
+            setMongolian(resolvedMongolian);
+          }
+        } catch (innerError) {
+          resolvedMongolian = "";
+        }
+      }
+      if (!resolvedMongolian) {
+        setError("Mongolian translation is required.");
+        setLoading(false);
+        return;
+      }
+
+      let resolvedExample = example.trim();
+      if (!resolvedExample && autoFill) {
+        try {
+          const generated = await generateExample({
+            english: english.trim(),
+            mongolian: resolvedMongolian || undefined
+          });
+          resolvedExample = generated.example?.trim() || "";
+          if (resolvedExample) {
+            setExample(resolvedExample);
+          }
+        } catch (innerError) {
+          resolvedExample = "";
+        }
+      }
       const word = await addWord({
         english: english.trim(),
-        mongolian: mongolian.trim(),
+        mongolian: resolvedMongolian,
         level,
-        example: example.trim() ? example.trim() : undefined,
+        example: resolvedExample ? resolvedExample : undefined,
+        autoFill,
       });
       onChange([word, ...todayWords]);
       setEnglish("");
       setMongolian("");
       setExample("");
       setSuggestion("");
+      setAutoFill(true);
       toast("Word added", "success");
+      recentlyAddedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       setError("Something went wrong. Please try again.");
       toast("Failed to add word", "error");
@@ -217,6 +274,15 @@ export default function AddWordForm({
             rows={3}
           />
         </div>
+        <label className="flex items-center gap-3 text-sm text-muted">
+          <input
+            type="checkbox"
+            checked={autoFill}
+            onChange={(event) => setAutoFill(event.target.checked)}
+            className="h-4 w-4 rounded border border-border bg-surface2 text-accent"
+          />
+          Auto-generate translation & example
+        </label>
         <div className="flex gap-3">
           {["B1", "B2"].map((item) => (
             <button
@@ -246,7 +312,7 @@ export default function AddWordForm({
       </form>
 
       <div className="mt-8 space-y-3">
-        <div className="flex items-center justify-between">
+        <div ref={recentlyAddedRef} className="flex items-center justify-between">
           <h3 className="text-lg font-display">Recently added</h3>
         </div>
         {todayWords.length === 0 && (

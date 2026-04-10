@@ -1,8 +1,64 @@
 import { Word } from "@prisma/client";
 import { WordLevel } from "../models/word";
+import { prisma } from "../db/prisma";
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+
+const FALLBACK_TRANSLATIONS: Record<string, string> = {
+  resilient: "тэсвэртэй",
+  crucial: "чухал",
+  decline: "буурах",
+  assume: "таамаглах",
+  allocate: "хуваарилах",
+  benefit: "ашиг тус",
+  challenge: "сорилт",
+  commission: "комисс",
+  comprise: "бүрдэх",
+  conflict: "зөрчил",
+  consequence: "үр дагавар",
+  consume: "хэрэглэх",
+  context: "нөхцөл байдал",
+  contribute: "хувь нэмэр оруулах",
+  controversy: "маргаан",
+  convert: "хөрвүүлэх",
+  cooperate: "хамтрах",
+  criteria: "шалгуур",
+  decline: "буурах",
+  demonstrate: "харуулах",
+  economy: "эдийн засаг",
+  emerge: "бий болох",
+  enhance: "сайжруулах",
+  environment: "байгаль орчин",
+  estimate: "тооцоолох",
+  evidence: "нотолгоо",
+  exclude: "хасах",
+  expand: "өргөжүүлэх",
+  factor: "хүчин зүйл",
+  finance: "санхүү",
+  global: "дэлхийн",
+  impact: "нөлөө",
+  income: "орлого",
+  indicate: "заах",
+  influence: "нөлөөлөх",
+  infrastructure: "дэд бүтэц",
+  innovation: "шинэчлэл",
+  isolate: "тусгаарлах",
+  maintain: "хадгалах",
+  major: "гол",
+  maximise: "дээдлэх",
+  minimize: "багасгах",
+  occur: "тохиолдох",
+  persuade: "ятгах",
+  policy: "бодлого",
+  proportion: "хувь хэмжээ",
+  reliable: "найдвартай",
+  significant: "ач холбогдолтой",
+  strategy: "стратеги",
+  sustain: "тогтвортой байлгах",
+  technology: "технологи",
+  trend: "хандлага"
+};
 
 export interface QuizQuestion {
   question: string;
@@ -107,13 +163,48 @@ export async function generateFunnyFeedback(score: number, total: number, wrongW
   return raw.trim();
 }
 
-export async function suggestTranslation(query: string): Promise<{ english: string; mongolian: string } | null> {
+export async function suggestTranslation(
+  query: string,
+  userId?: string,
+): Promise<{ english: string; mongolian: string } | null> {
   if (!query.trim()) return null;
-  if (!ANTHROPIC_API_KEY) return null;
+  if (!ANTHROPIC_API_KEY) {
+    const normalized = query.trim();
+    const found = await prisma.word.findFirst({
+      where: {
+        english: { equals: normalized, mode: "insensitive" },
+        deletedAt: null,
+        ...(userId ? { userId } : {})
+      },
+      orderBy: { addedAt: "desc" }
+    });
+    if (found?.mongolian) {
+      return { english: found.english, mongolian: found.mongolian };
+    }
+    const fallback = FALLBACK_TRANSLATIONS[normalized.toLowerCase()];
+    if (fallback) {
+      return { english: normalized, mongolian: fallback };
+    }
+    return null;
+  }
   const system = "You are an IELTS vocabulary expert. Always respond with valid JSON only.";
   const user = `Provide a Mongolian translation suggestion for this IELTS word: "${query}". Return ONLY JSON: {"english":"${query}","mongolian":"..."}`;
   const raw = await callClaude(system, user);
   const parsed = safeJsonParse<{ english: string; mongolian: string } | null>(raw, null);
   if (!parsed || !parsed.mongolian) return null;
+  return parsed;
+}
+
+export async function generateExampleSentence(
+  english: string,
+  mongolian?: string,
+): Promise<{ example: string } | null> {
+  if (!english.trim()) return null;
+  if (!ANTHROPIC_API_KEY) return null;
+  const system = "You are an IELTS vocabulary tutor. Always respond with valid JSON only.";
+  const user = `Create ONE short, natural English example sentence using the word "${english}". Keep it IELTS-appropriate. Return ONLY JSON: {"example":"..."}.`;
+  const raw = await callClaude(system, user);
+  const parsed = safeJsonParse<{ example: string } | null>(raw, null);
+  if (!parsed || !parsed.example) return null;
   return parsed;
 }
