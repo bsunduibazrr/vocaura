@@ -3,10 +3,34 @@
 import { useState } from "react";
 import { ApiError } from "../lib/api";
 import { getAuthToken } from "../lib/authToken";
+import { useLanguage } from "./LanguageProvider";
 
 export default function PackTools() {
+  const { language } = useLanguage();
   const [status, setStatus] = useState<string | null>(null);
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const copy =
+    language === "mn"
+      ? {
+          loginExport: "Pack export хийхийн тулд нэвтэрнэ үү.",
+          exportFailed: "Export амжилтгүй боллоо",
+          imported: (count: number) => `${count} үг импортлогдлоо`,
+          loginImport: "Pack import хийхийн тулд нэвтэрнэ үү.",
+          importFailed: "Import амжилтгүй боллоо",
+          title: "Community pack-ууд",
+          export: "Pack татах",
+          import: "Pack оруулах",
+        }
+      : {
+          loginExport: "Please login to export packs.",
+          exportFailed: "Export failed",
+          imported: (count: number) => `Imported: ${count} words`,
+          loginImport: "Please login to import packs.",
+          importFailed: "Import failed",
+          title: "Community packs",
+          export: "Export pack",
+          import: "Import pack",
+        };
 
   const handleExport = async () => {
     try {
@@ -27,10 +51,10 @@ export default function PackTools() {
       URL.revokeObjectURL(url);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        setStatus("Please login to export packs.");
+        setStatus(copy.loginExport);
         return;
       }
-      setStatus("Export failed");
+      setStatus(copy.exportFailed);
     }
   };
 
@@ -53,29 +77,29 @@ export default function PackTools() {
         throw new ApiError(res.status, await res.text());
       }
       const data = await res.json();
-      setStatus(`Imported: ${data.inserted} words`);
+      setStatus(copy.imported(data.inserted));
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        setStatus("Please login to import packs.");
+        setStatus(copy.loginImport);
         return;
       }
-      setStatus("Import failed");
+      setStatus(copy.importFailed);
     }
   };
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-6 space-y-3">
-      <h3 className="font-display text-lg">Community packs</h3>
+      <h3 className="font-display text-lg">{copy.title}</h3>
       <div className="flex gap-3">
         <button
           type="button"
           onClick={handleExport}
           className="rounded-full border border-accent bg-accent/10 px-4 py-2 text-sm text-accent"
         >
-          Export pack
+          {copy.export}
         </button>
         <label className="rounded-full border border-border px-4 py-2 text-sm text-muted cursor-pointer">
-          Import pack
+          {copy.import}
           <input type="file" accept="application/json" className="hidden" onChange={handleImport} />
         </label>
       </div>

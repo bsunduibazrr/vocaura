@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { QuizQuestion } from "../lib/types";
+import { useLanguage } from "./LanguageProvider";
 
 interface QuizGameProps {
   questions: QuizQuestion[];
@@ -15,6 +16,7 @@ interface QuizGameProps {
 type GameState = "loading" | "playing" | "reviewing" | "finished";
 
 export default function QuizGame({ questions, onComplete, timed = false, timeLimit = 20, enableSpeech = false }: QuizGameProps) {
+  const { language } = useLanguage();
   const [state, setState] = useState<GameState>("loading");
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -47,6 +49,26 @@ export default function QuizGame({ questions, onComplete, timed = false, timeLim
 
   const current = questions[index];
   const total = questions.length;
+  const copy =
+    language === "mn"
+      ? {
+          loading: "Ачаалж байна...",
+          question: "Асуулт",
+          score: "Оноо",
+          time: "Хугацаа",
+          placeholder: "Хариултаа бичнэ үү",
+          speak: "Дуугаар хариулах",
+          submit: "Илгээх",
+        }
+      : {
+          loading: "Loading...",
+          question: "Question",
+          score: "Score",
+          time: "Time",
+          placeholder: "Type your answer",
+          speak: "Speak answer",
+          submit: "Submit",
+        };
 
   const score = useMemo(
     () => answers.filter((a) => a.selected === a.correctAnswer).length,
@@ -86,17 +108,17 @@ export default function QuizGame({ questions, onComplete, timed = false, timeLim
   };
 
   if (state === "loading") {
-    return <div className="text-center text-muted">Loading...</div>;
+    return <div className="text-center text-muted">{copy.loading}</div>;
   }
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between text-sm text-muted">
-        <span>Question {index + 1}/{total}</span>
-        <span className="font-mono">Score: {score}</span>
+        <span>{copy.question} {index + 1}/{total}</span>
+        <span className="font-mono">{copy.score}: {score}</span>
       </div>
       {timed && (
-        <div className="text-xs text-muted">Time: {seconds}s</div>
+        <div className="text-xs text-muted">{copy.time}: {seconds}s</div>
       )}
 
       <AnimatePresence mode="wait">
@@ -148,7 +170,7 @@ export default function QuizGame({ questions, onComplete, timed = false, timeLim
             onChange={(event) => setInput(event.target.value)}
             disabled={!!selected}
             className="w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-lg text-text outline-none focus:border-accent"
-            placeholder="Type your answer"
+            placeholder={copy.placeholder}
           />
           <div className="flex gap-3">
             {enableSpeech && typeof window !== "undefined" && "webkitSpeechRecognition" in window && (
@@ -166,7 +188,7 @@ export default function QuizGame({ questions, onComplete, timed = false, timeLim
                 }}
                 className="rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text hover:border-accent"
               >
-                🎙️ Speak answer
+                🎙️ {copy.speak}
               </button>
             )}
             <button
@@ -175,7 +197,7 @@ export default function QuizGame({ questions, onComplete, timed = false, timeLim
               onClick={() => handleAnswer(input)}
               className="rounded-xl border border-accent bg-accent/10 px-4 py-2 text-sm text-accent"
             >
-              Submit
+              {copy.submit}
             </button>
           </div>
         </div>

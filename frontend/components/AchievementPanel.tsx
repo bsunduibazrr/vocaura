@@ -3,9 +3,15 @@
 import { useEffect, useState } from "react";
 import type { Achievement } from "../lib/types";
 import { ApiError, fetchAchievements } from "../lib/api";
+import { useLanguage } from "./LanguageProvider";
 
 export default function AchievementPanel() {
+  const { language } = useLanguage();
   const [items, setItems] = useState<Achievement[]>([]);
+  const copy =
+    language === "mn"
+      ? { title: "Амжилтууд", empty: "Одоогоор badge алга байна." }
+      : { title: "Achievements", empty: "No badges yet." };
 
   useEffect(() => {
     const load = async () => {
@@ -23,10 +29,10 @@ export default function AchievementPanel() {
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-6">
-      <h3 className="font-display text-lg">Achievements</h3>
+      <h3 className="font-display text-lg">{copy.title}</h3>
       <div className="mt-4 space-y-3">
         {items.length === 0 && (
-          <p className="text-sm text-muted">No badges yet.</p>
+          <p className="text-sm text-muted">{copy.empty}</p>
         )}
         {items.map((item) => (
           <div key={item.id} className="rounded-xl border border-border bg-surface2 px-4 py-3">

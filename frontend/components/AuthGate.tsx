@@ -4,9 +4,12 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { FiLogIn } from "react-icons/fi";
 import { useUser } from "@clerk/nextjs";
+import { useLanguage } from "./LanguageProvider";
 
 export default function AuthGate({ title, message }: { title: string; message: string }) {
   const { user, isLoaded } = useUser();
+  const { language } = useLanguage();
+  const cta = language === "mn" ? "Үргэлжлүүлэхийн тулд нэвтэр" : "Sign in to continue";
 
   if (!isLoaded) {
     return (
@@ -32,7 +35,7 @@ export default function AuthGate({ title, message }: { title: string; message: s
             href="/login"
             className="mt-6 inline-flex items-center gap-2 rounded-full border border-accent bg-accent/15 px-6 py-3 text-sm font-semibold text-accent transition hover:bg-accent/25"
           >
-            <FiLogIn /> Sign in to continue
+            <FiLogIn /> {cta}
           </Link>
         </motion.div>
       </motion.div>

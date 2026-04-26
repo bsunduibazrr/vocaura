@@ -11,16 +11,11 @@ import type { QuizQuestion, QuizResult } from "../../lib/types";
 import { fetchQuizQuestions, submitQuiz } from "../../lib/api";
 import { useUser } from "@clerk/nextjs";
 import AuthGate from "../../components/AuthGate";
-
-const statusLabel = (percent: number) => {
-  if (percent >= 90) return "🏆 Excellent";
-  if (percent >= 70) return "👍 Good";
-  if (percent >= 50) return "💪 Keep trying";
-  return "😅 Were you asleep?";
-};
+import { useLanguage } from "../../components/LanguageProvider";
 
 export default function QuizPage() {
   const { user, isLoaded } = useUser();
+  const { language } = useLanguage();
   const authLoading = !isLoaded;
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);
@@ -30,6 +25,60 @@ export default function QuizPage() {
   const [speech, setSpeech] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const statusLabel = (percent: number) => {
+    if (language === "mn") {
+      if (percent >= 90) return "🏆 Маш сайн";
+      if (percent >= 70) return "👍 Сайн";
+      if (percent >= 50) return "💪 Ахиад оролдоод үз";
+      return "😅 Унтаж байсан юм биш биз?";
+    }
+    if (percent >= 90) return "🏆 Excellent";
+    if (percent >= 70) return "👍 Good";
+    if (percent >= 50) return "💪 Keep trying";
+    return "😅 Were you asleep?";
+  };
+  const copy =
+    language === "mn"
+      ? {
+          authTitle: "Шалгалт өгөхийн тулд нэвтэрнэ үү",
+          authMessage: "Шалгалтууд таны үгс болон ахицад тулгуурлан үүснэ.",
+          loading: "Шалгалтыг ачаалж байна...",
+          emptyTitle: "Эхлээд үгээ нэмнэ үү",
+          emptyMessage: "Шалгалт үүсгэх үг алга байна. Үг нэмээд шууд шалгалтаа өгч болно.",
+          home: "Нүүр",
+          add: "Үг нэмэх",
+          stats: "Статистик",
+          yourScore: "Таны оноо",
+          modes: [
+            { id: "standard", label: "Fun Quiz" },
+            { id: "spelling", label: "Spelling" },
+            { id: "fill", label: "Fill-in" },
+            { id: "boss", label: "Boss battle (7 хоног)" }
+          ],
+          timed: "Хугацаатай горим",
+          speech: "Ярианы горим",
+          newQuestions: "Шинэ асуулт авах",
+        }
+      : {
+          authTitle: "Sign in to take the quiz",
+          authMessage: "Quizzes are personalized to your word list and progress.",
+          loading: "Loading quiz...",
+          emptyTitle: "Add some words first",
+          emptyMessage: "There are no words available for quiz generation yet. Add words and come right back.",
+          home: "Home",
+          add: "Add words",
+          stats: "Stats",
+          yourScore: "Your score",
+          modes: [
+            { id: "standard", label: "Fun Quiz" },
+            { id: "spelling", label: "Spelling" },
+            { id: "fill", label: "Fill-in" },
+            { id: "boss", label: "Boss battle (7 days)" }
+          ],
+          timed: "Timed mode",
+          speech: "Speaking mode",
+          newQuestions: "New questions",
+        };
 
   useEffect(() => {
     const load = async () => {
@@ -69,24 +118,22 @@ export default function QuizPage() {
   if (!authLoading && !user) {
     return (
       <AuthGate
-        title="Sign in to take the quiz"
-        message="Quizzes are personalized to your word list and progress."
+        title={copy.authTitle}
+        message={copy.authMessage}
       />
     );
   }
 
   if (loading) {
-    return <div className="mx-auto max-w-4xl px-6 py-16 text-center text-muted">Loading quiz...</div>;
+    return <div className="mx-auto max-w-4xl px-6 py-16 text-center text-muted">{copy.loading}</div>;
   }
 
   if (!loading && questions.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-16 space-y-6">
         <div className="rounded-3xl border border-border bg-surface p-8 text-center sm:p-10">
-          <h2 className="font-display text-2xl text-text">Эхлээд үгээ нэмнэ үү</h2>
-          <p className="mt-3 text-muted">
-            Quiz үүсгэх үг алга байна. Add words хэсэгт очоод үгээ нэмсний дараа шууд quiz өгч болно.
-          </p>
+          <h2 className="font-display text-2xl text-text">{copy.emptyTitle}</h2>
+          <p className="mt-3 text-muted">{copy.emptyMessage}</p>
         </div>
         <motion.div
           className="grid gap-3 md:grid-cols-3"
@@ -96,15 +143,15 @@ export default function QuizPage() {
         >
           {[{
             href: "/",
-            label: "Home",
+          label: copy.home,
             icon: <FiHome />
           }, {
             href: "/add",
-            label: "Add words",
+            label: copy.add,
             icon: <FiPlusCircle />
           }, {
             href: "/stats",
-            label: "Stats",
+            label: copy.stats,
             icon: <FiBarChart2 />
           }].map((item) => (
             <motion.div key={item.href} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
@@ -142,7 +189,7 @@ export default function QuizPage() {
           </motion.div>
         )}
         <div className="rounded-2xl border border-border bg-surface p-10 text-center space-y-3">
-          <p className="text-sm text-muted">Your score</p>
+          <p className="text-sm text-muted">{copy.yourScore}</p>
           <p className="font-display text-5xl text-accent">{result.score}/{result.total}</p>
           <p className="text-xl text-accent3">{statusLabel(percent)}</p>
         </div>
@@ -158,15 +205,15 @@ export default function QuizPage() {
         >
           {[{
             href: "/",
-            label: "Home",
+            label: copy.home,
             icon: <FiHome />
           }, {
             href: "/add",
-            label: "Add words",
+            label: copy.add,
             icon: <FiPlusCircle />
           }, {
             href: "/stats",
-            label: "Stats",
+            label: copy.stats,
             icon: <FiBarChart2 />
           }].map((item) => (
             <motion.div key={item.href} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
@@ -186,12 +233,7 @@ export default function QuizPage() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12 space-y-8">
       <div className="rounded-3xl border border-border bg-surface p-5 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          {[
-            { id: "standard", label: "Fun Quiz" },
-            { id: "spelling", label: "Spelling" },
-            { id: "fill", label: "Fill-in" },
-            { id: "boss", label: "Boss battle (7 days)" }
-          ].map((item) => (
+          {copy.modes.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -208,11 +250,11 @@ export default function QuizPage() {
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={timed} onChange={(e) => setTimed(e.target.checked)} />
-              Timed mode
+              {copy.timed}
             </label>
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={speech} onChange={(e) => setSpeech(e.target.checked)} />
-              Speaking mode
+              {copy.speech}
             </label>
           </div>
           <button
@@ -221,7 +263,7 @@ export default function QuizPage() {
             className="inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-sm text-text transition hover:border-accent hover:text-accent"
           >
             <FiRefreshCw />
-            New questions
+            {copy.newQuestions}
           </button>
         </div>
       </div>
@@ -234,15 +276,15 @@ export default function QuizPage() {
       >
         {[{
           href: "/",
-            label: "Home",
+            label: copy.home,
           icon: <FiHome />
         }, {
           href: "/add",
-          label: "Add words",
+          label: copy.add,
           icon: <FiPlusCircle />
         }, {
           href: "/stats",
-          label: "Stats",
+          label: copy.stats,
           icon: <FiBarChart2 />
         }].map((item) => (
           <motion.div key={item.href} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>

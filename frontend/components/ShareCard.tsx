@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useLanguage } from "./LanguageProvider";
 
 interface ShareCardProps {
   score: number;
@@ -9,18 +10,37 @@ interface ShareCardProps {
 }
 
 export default function ShareCard({ score, total, feedback }: ShareCardProps) {
+  const { language } = useLanguage();
   const ref = useRef<HTMLDivElement>(null);
   const storyRef = useRef<HTMLDivElement>(null);
+  const copy =
+    language === "mn"
+      ? {
+          file: "vocaura-quiz.png",
+          title: "Vocaura Шалгалт",
+          result: "Шалгалтын дүн",
+          challenge: "22:00 сорилт",
+          share: "Үр дүнгээ хуваалцах",
+          story: "Instagram Story загвар",
+        }
+      : {
+          file: "vocaura-quiz.png",
+          title: "Vocaura Quiz",
+          result: "Quiz Result",
+          challenge: "22:00 Challenge",
+          share: "Share result",
+          story: "Instagram Story template",
+        };
 
   const handleShare = async (target: HTMLDivElement | null) => {
     if (!target) return;
     const canvas = await import("html2canvas").then((m) => m.default(target));
     canvas.toBlob(async (blob) => {
       if (!blob) return;
-      const file = new File([blob], "ielts-quiz.png", { type: "image/png" });
+      const file = new File([blob], copy.file, { type: "image/png" });
       if (navigator.share) {
         try {
-          await navigator.share({ files: [file], title: "Vocaura Quiz" });
+          await navigator.share({ files: [file], title: copy.title });
           return;
         } catch (error) {
           // ignore
@@ -29,7 +49,7 @@ export default function ShareCard({ score, total, feedback }: ShareCardProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "ielts-quiz.png";
+      link.download = copy.file;
       link.click();
       URL.revokeObjectURL(url);
     });
@@ -53,7 +73,7 @@ export default function ShareCard({ score, total, feedback }: ShareCardProps) {
           <div className="relative z-10 flex h-full flex-col justify-between p-8">
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.3em] text-muted">Vocaura</p>
-              <p className="text-3xl font-display text-accent">Quiz Result</p>
+              <p className="text-3xl font-display text-accent">{copy.result}</p>
             </div>
             <div className="space-y-3 text-center">
               <p className="text-6xl font-display text-text">{score}/{total}</p>
@@ -61,7 +81,7 @@ export default function ShareCard({ score, total, feedback }: ShareCardProps) {
             </div>
             <div className="flex items-center justify-between text-xs text-muted">
               <span>@ielts.vocab</span>
-              <span>22:00 Challenge</span>
+              <span>{copy.challenge}</span>
             </div>
           </div>
         </div>
@@ -71,14 +91,14 @@ export default function ShareCard({ score, total, feedback }: ShareCardProps) {
         onClick={() => handleShare(ref.current)}
         className="rounded-full border border-accent bg-accent/10 px-4 py-2 text-sm text-accent"
       >
-        Share result
+        {copy.share}
       </button>
       <button
         type="button"
         onClick={() => handleShare(storyRef.current)}
         className="rounded-full border border-accent2 bg-accent2/10 px-4 py-2 text-sm text-accent2"
       >
-        Instagram Story template
+        {copy.story}
       </button>
     </div>
   );

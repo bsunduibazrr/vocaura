@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLanguage } from "./LanguageProvider";
 
 const STORAGE_KEY = "ielts_reminders_enabled";
 
@@ -50,7 +51,26 @@ function nextAtHour(hour: number, timeZone = "Asia/Ulaanbaatar") {
 }
 
 export default function NotificationSetup() {
+  const { language } = useLanguage();
   const [enabled, setEnabled] = useState(false);
+  const copy =
+    language === "mn"
+      ? {
+          title: "Push сануулга",
+          subtitle: "17:00 болон 22:00 цагт сануулна.",
+          enable: "Сануулга асаах",
+          disable: "Унтраах",
+          body17: "17:00 — автоматаар үг орох цаг боллоо",
+          body22: "22:00 — шалгалтын цаг эхэллээ",
+        }
+      : {
+          title: "Push reminder",
+          subtitle: "Reminders at 17:00 and 22:00.",
+          enable: "Enable reminders",
+          disable: "Disable",
+          body17: "17:00 — time for auto word drop",
+          body22: "22:00 — quiz time has started",
+        };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -81,9 +101,9 @@ export default function NotificationSetup() {
 
       timeoutId = window.setTimeout(() => {
         if (next.getHours() === 17) {
-          show("Vocaura", "17:00 — time for auto word drop");
+          show("Vocaura", copy.body17);
         } else {
-          show("Vocaura", "22:00 — quiz time has started");
+          show("Vocaura", copy.body22);
         }
         schedule();
       }, delay);
@@ -113,8 +133,8 @@ export default function NotificationSetup() {
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-6">
-      <h3 className="font-display text-lg">Push reminder</h3>
-      <p className="mt-2 text-sm text-muted">Reminders at 17:00 and 22:00.</p>
+      <h3 className="font-display text-lg">{copy.title}</h3>
+      <p className="mt-2 text-sm text-muted">{copy.subtitle}</p>
       <div className="mt-4 flex gap-3">
         {!enabled ? (
           <button
@@ -122,7 +142,7 @@ export default function NotificationSetup() {
             onClick={handleEnable}
             className="rounded-full border border-accent bg-accent/10 px-4 py-2 text-sm text-accent"
           >
-            Enable reminders
+            {copy.enable}
           </button>
         ) : (
           <button
@@ -130,7 +150,7 @@ export default function NotificationSetup() {
             onClick={handleDisable}
             className="rounded-full border border-border px-4 py-2 text-sm text-muted"
           >
-            Disable
+            {copy.disable}
           </button>
         )}
       </div>

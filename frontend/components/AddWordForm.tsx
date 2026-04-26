@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { Word, WordLevel } from "../lib/types";
-import { addWord, deleteWord, generateExample, suggestWord, updateWord } from "../lib/api";
+import { addWord, ApiError, deleteWord, generateExample, suggestWord, updateWord } from "../lib/api";
 import { FiEdit2, FiTrash2, FiSave, FiX, FiFileText } from "react-icons/fi";
 import { BsWordpress } from "react-icons/bs";
 import { toast } from "../lib/toast";
 import WordCard from "./WordCard";
+import { useLanguage } from "./LanguageProvider";
 
 interface AddWordFormProps {
   todayWords: Word[];
@@ -18,6 +19,7 @@ export default function AddWordForm({
   todayWords,
   onChange,
 }: AddWordFormProps) {
+  const { language } = useLanguage();
   const [english, setEnglish] = useState("");
   const [mongolian, setMongolian] = useState("");
   const [level, setLevel] = useState<WordLevel>("B2");
@@ -28,6 +30,9 @@ export default function AddWordForm({
   const [autoFill, setAutoFill] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Word | null>(null);
+  const [translationPermission, setTranslationPermission] = useState<boolean | null>(null);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [editDraft, setEditDraft] = useState<{
     english: string;
     mongolian: string;
@@ -42,12 +47,121 @@ export default function AddWordForm({
 
   const mongolianRef = useRef("");
   const recentlyAddedRef = useRef<HTMLDivElement | null>(null);
+  const permissionPromptedRef = useRef(false);
   const safeEnglish = english ?? "";
   const safeAutoFill = Boolean(autoFill);
+  const copy =
+    language === "mn"
+      ? {
+          fillEnglish: "Англи талбарыг бөглөнө үү.",
+          fillMongolian: "Монгол орчуулгаа бөглөх эсвэл auto-generate-г асаана уу.",
+          mongolianRequired: "Монгол орчуулга заавал хэрэгтэй.",
+          genericError: "Ямар нэг алдаа гарлаа. Дахин оролдоно уу.",
+          added: "Үг нэмэгдлээ",
+          updated: "Үг шинэчлэгдлээ",
+          updateFailed: "Үгийг шинэчилж чадсангүй",
+          deleted: "Үг устгагдлаа",
+          deleteFailed: "Үгийг устгаж чадсангүй",
+          todayWords: "Өнөөдрийн үгс",
+          wordsAdded: (count: number) => `${count}/20 үг нэмсэн`,
+          englishWord: "Англи үг",
+          englishPlaceholder: "ж: resilient",
+          suggestion: "Санал болгож буй орчуулга",
+          translating: "Орчуулж байна...",
+          mongolianTranslation: "Монгол орчуулга",
+          mongolianPlaceholder: "ж: тэсвэртэй",
+          exampleSentence: "Жишээ өгүүлбэр (сонголттой)",
+          examplePlaceholder: "ж: She remained resilient during the crisis.",
+          autoGenerate: "Орчуулга ба жишээг автоматаар үүсгэх",
+          adding: "Нэмж байна...",
+          addWord: "Үг нэмэх",
+          recentlyAdded: "Сүүлд нэмсэн",
+          noWords: "Одоогоор үг алга байна.",
+          save: "Хадгалах",
+          cancel: "Болих",
+          deleteTitle: "Энэ үгийг устгах уу?",
+          deleteMessage: (word: string) => `"${word}" үгийг устгахдаа итгэлтэй байна уу?`,
+          no: "Үгүй",
+          yesDelete: "Тийм, устга",
+          permissionTitle: "Автомат орчуулгын зөвшөөрөл",
+          permissionMessage: "Англи үг бичихэд Vocaura автоматаар монгол орчуулгыг татаж, дараагийн талбарт бөглөх үү?",
+          yes: "Тийм",
+        }
+      : {
+          fillEnglish: "Please fill the English field.",
+          fillMongolian: "Please fill the Mongolian field or enable auto-generate.",
+          mongolianRequired: "Mongolian translation is required.",
+          genericError: "Something went wrong. Please try again.",
+          added: "Word added",
+          updated: "Word updated",
+          updateFailed: "Failed to update word",
+          deleted: "Word deleted",
+          deleteFailed: "Failed to delete word",
+          todayWords: "Today's words",
+          wordsAdded: (count: number) => `${count}/20 words added`,
+          englishWord: "English word",
+          englishPlaceholder: "ex: resilient",
+          suggestion: "Suggestion",
+          translating: "Translating...",
+          mongolianTranslation: "Mongolian translation",
+          mongolianPlaceholder: "Example: resilient",
+          exampleSentence: "Example sentence (optional)",
+          examplePlaceholder: "Example: She remained resilient during the crisis.",
+          autoGenerate: "Auto-generate translation & example",
+          adding: "Adding...",
+          addWord: "Add word",
+          recentlyAdded: "Recently added",
+          noWords: "No words yet.",
+          save: "Save",
+          cancel: "Cancel",
+          deleteTitle: "Delete this word?",
+          deleteMessage: (word: string) => `Are you sure you want to delete "${word}"?`,
+          no: "No",
+          yesDelete: "Yes, delete",
+          permissionTitle: "Auto translation permission",
+          permissionMessage: "When you type an English word, should Vocaura automatically fetch the Mongolian translation and fill it into the next field?",
+          yes: "Yes",
+        };
 
   useEffect(() => {
     mongolianRef.current = mongolian;
   }, [mongolian]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const saved = window.localStorage.getItem("vocaura-translation-permission");
+    if (saved === "granted") {
+      setTranslationPermission(true);
+      permissionPromptedRef.current = true;
+      return;
+    }
+    if (saved === "denied") {
+      setTranslationPermission(false);
+      permissionPromptedRef.current = true;
+    }
+  }, []);
+
+  const fetchTranslation = async (input: string) => {
+    const normalized = input.trim();
+    if (!normalized) return;
+
+    setTranslating(true);
+    try {
+      const response = await suggestWord(normalized);
+      const translated = response.mongolian?.trim() || "";
+      setSuggestion(translated);
+      if (translated && !mongolianRef.current.trim()) {
+        setMongolian(translated);
+      }
+    } catch (err) {
+      setSuggestion("");
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   useEffect(() => {
     if (!safeEnglish.trim()) {
@@ -58,28 +172,51 @@ export default function AddWordForm({
       setSuggestion("");
       return;
     }
+    if (translationPermission !== true) {
+      return;
+    }
     const id = setTimeout(async () => {
-      try {
-        const response = await suggestWord(safeEnglish.trim());
-        setSuggestion(response.mongolian || "");
-        if (!mongolianRef.current.trim() && response.mongolian) {
-          setMongolian(response.mongolian);
-        }
-      } catch (err) {
-        setSuggestion("");
-      }
+      await fetchTranslation(safeEnglish);
     }, 500);
     return () => clearTimeout(id);
-  }, [safeEnglish, safeAutoFill]);
+  }, [safeEnglish, safeAutoFill, translationPermission]);
+
+  const maybeAskTranslationPermission = () => {
+    if (!safeAutoFill || !english.trim()) {
+      return;
+    }
+    if (translationPermission !== null || permissionPromptedRef.current) {
+      return;
+    }
+    permissionPromptedRef.current = true;
+    setShowPermissionModal(true);
+  };
+
+  const handleAllowTranslation = async () => {
+    setTranslationPermission(true);
+    setShowPermissionModal(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("vocaura-translation-permission", "granted");
+    }
+    await fetchTranslation(english);
+  };
+
+  const handleDenyTranslation = () => {
+    setTranslationPermission(false);
+    setShowPermissionModal(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("vocaura-translation-permission", "denied");
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!english.trim()) {
-      setError("Please fill the English field.");
+      setError(copy.fillEnglish);
       return;
     }
     if (!autoFill && !mongolian.trim()) {
-      setError("Please fill the Mongolian field or enable auto-generate.");
+      setError(copy.fillMongolian);
       return;
     }
     setLoading(true);
@@ -98,7 +235,7 @@ export default function AddWordForm({
         }
       }
       if (!resolvedMongolian) {
-        setError("Mongolian translation is required.");
+        setError(copy.mongolianRequired);
         setLoading(false);
         return;
       }
@@ -120,7 +257,7 @@ export default function AddWordForm({
       }
       const word = await addWord({
         english: english.trim(),
-        mongolian: resolvedMongolian,
+        mongolian: resolvedMongolian || undefined,
         level,
         example: resolvedExample ? resolvedExample : undefined,
         autoFill,
@@ -131,11 +268,15 @@ export default function AddWordForm({
       setExample("");
       setSuggestion("");
       setAutoFill(true);
-      toast("Word added", "success");
+      toast(copy.added, "success");
       recentlyAddedRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
-      setError("Something went wrong. Please try again.");
-      toast("Failed to add word", "error");
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : copy.genericError;
+      setError(message);
+      toast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -169,9 +310,9 @@ export default function AddWordForm({
         todayWords.map((word) => (word.id === updated.id ? updated : word)),
       );
       cancelEdit();
-      toast("Word updated", "success");
+      toast(copy.updated, "success");
     } catch (error) {
-      toast("Failed to update word", "error");
+      toast(copy.updateFailed, "error");
     }
   };
 
@@ -179,9 +320,9 @@ export default function AddWordForm({
     try {
       await deleteWord(id);
       onChange(todayWords.filter((word) => word.id !== id));
-      toast("Word deleted", "success");
+      toast(copy.deleted, "success");
     } catch (error) {
-      toast("Failed to delete word", "error");
+      toast(copy.deleteFailed, "error");
     }
   };
 
@@ -200,10 +341,10 @@ export default function AddWordForm({
               <BsWordpress className="w-12 h-12" />
               <div className="flex flex-col gap-1 ">
                 <h2 className="font-display text-2xl text-text">
-                  Today’s words
+                  {copy.todayWords}
                 </h2>
                 <p className="text-sm text-muted">
-                  {todayWords.length}/20 words added
+                  {copy.wordsAdded(todayWords.length)}
                 </p>
               </div>
             </div>
@@ -242,34 +383,38 @@ export default function AddWordForm({
         className="space-y-6 rounded-2xl border border-green-500 bg-surface p-8"
       >
         <div>
-          <label className="text-sm text-muted">English word</label>
+          <label className="text-sm text-muted">{copy.englishWord}</label>
           <input
             value={english}
             onChange={(event) => setEnglish(event.target.value)}
-            placeholder="ex: resilient"
+            onBlur={maybeAskTranslationPermission}
+            placeholder={copy.englishPlaceholder}
             className="mt-2 w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-lg text-text outline-none focus:border-accent"
           />
           {suggestion && !mongolian && (
-            <p className="mt-2 text-sm text-accent">Suggestion: {suggestion}</p>
+            <p className="mt-2 text-sm text-accent">{copy.suggestion}: {suggestion}</p>
+          )}
+          {translating && (
+            <p className="mt-2 text-sm text-muted">{copy.translating}</p>
           )}
         </div>
         <div>
-          <label className="text-sm text-muted">Mongolian translation</label>
+          <label className="text-sm text-muted">{copy.mongolianTranslation}</label>
           <input
             value={mongolian}
             onChange={(event) => setMongolian(event.target.value)}
-            placeholder="Example: resilient"
+            placeholder={copy.mongolianPlaceholder}
             className="mt-2 w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-lg text-text outline-none focus:border-accent"
           />
         </div>
         <div>
           <label className="text-sm text-muted inline-flex items-center gap-2">
-            <FiFileText /> Example sentence (optional)
+            <FiFileText /> {copy.exampleSentence}
           </label>
           <textarea
             value={example}
             onChange={(event) => setExample(event.target.value)}
-            placeholder="Example: She remained resilient during the crisis."
+            placeholder={copy.examplePlaceholder}
             className="mt-2 w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-lg text-text outline-none focus:border-accent"
             rows={3}
           />
@@ -281,7 +426,7 @@ export default function AddWordForm({
             onChange={(event) => setAutoFill(event.target.checked)}
             className="h-4 w-4 rounded border border-border bg-surface2 text-accent"
           />
-          Auto-generate translation & example
+          {copy.autoGenerate}
         </label>
         <div className="flex gap-3">
           {["B1", "B2"].map((item) => (
@@ -307,16 +452,16 @@ export default function AddWordForm({
           disabled={loading}
           className="w-full rounded-xl border border-border bg-accent/10 px-6 py-3 text-lg font-medium text-accent shadow-glow transition disabled:opacity-50"
         >
-          {loading ? "Adding..." : "Add word"}
+          {loading ? copy.adding : copy.addWord}
         </motion.button>
       </form>
 
       <div className="mt-8 space-y-3">
         <div ref={recentlyAddedRef} className="flex items-center justify-between">
-          <h3 className="text-lg font-display">Recently added</h3>
+          <h3 className="text-lg font-display">{copy.recentlyAdded}</h3>
         </div>
         {todayWords.length === 0 && (
-          <p className="text-sm text-muted">No words yet.</p>
+          <p className="text-sm text-muted">{copy.noWords}</p>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
           {todayWords.map((word, index) => (
@@ -375,10 +520,10 @@ export default function AddWordForm({
                     <button
                       type="button"
                       onClick={saveEdit}
-                      className="rounded-full border border-accent bg-accent/10 px-3 py-1 text-accent"
+                        className="rounded-full border border-accent bg-accent/10 px-3 py-1 text-accent"
                     >
                       <span className="inline-flex items-center gap-2">
-                        <FiSave /> Save
+                        <FiSave /> {copy.save}
                       </span>
                     </button>
                     <button
@@ -387,7 +532,7 @@ export default function AddWordForm({
                       className="rounded-full border border-border px-3 py-1 text-muted"
                     >
                       <span className="inline-flex items-center gap-2">
-                        <FiX /> Cancel
+                        <FiX /> {copy.cancel}
                       </span>
                     </button>
                   </div>
@@ -408,9 +553,9 @@ export default function AddWordForm({
       {pendingDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
           <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6">
-            <h4 className="font-display text-lg text-text">Delete this word?</h4>
+            <h4 className="font-display text-lg text-text">{copy.deleteTitle}</h4>
             <p className="mt-2 text-sm text-muted">
-              Are you sure you want to delete "{pendingDelete.english}"?
+              {copy.deleteMessage(pendingDelete.english)}
             </p>
             <div className="mt-6 flex items-center justify-end gap-3">
               <button
@@ -419,7 +564,7 @@ export default function AddWordForm({
                 className="rounded-full border border-border px-4 py-2 text-sm text-muted"
               >
                 <span className="inline-flex items-center gap-2">
-                  <FiX /> No
+                  <FiX /> {copy.no}
                 </span>
               </button>
               <button
@@ -428,7 +573,38 @@ export default function AddWordForm({
                 className="rounded-full border border-accent2 bg-accent2/10 px-4 py-2 text-sm text-accent2"
               >
                 <span className="inline-flex items-center gap-2">
-                  <FiTrash2 /> Yes, delete
+                  <FiTrash2 /> {copy.yesDelete}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPermissionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-6">
+            <h4 className="font-display text-lg text-text">{copy.permissionTitle}</h4>
+            <p className="mt-2 text-sm text-muted">
+              {copy.permissionMessage}
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleDenyTranslation}
+                className="rounded-full border border-border px-4 py-2 text-sm text-muted"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <FiX /> {copy.no}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleAllowTranslation}
+                className="rounded-full border border-accent bg-accent/10 px-4 py-2 text-sm text-accent"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <FiSave /> {copy.yes}
                 </span>
               </button>
             </div>

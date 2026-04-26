@@ -9,19 +9,25 @@ import { requireAuth, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
+const emptyToUndefined = (value: unknown) => {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+};
+
 const createWordSchema = z.object({
-  english: z.string().min(1),
-  mongolian: z.string().min(1).optional(),
+  english: z.string().trim().min(1),
+  mongolian: z.preprocess(emptyToUndefined, z.string().trim().min(1).optional()),
   level: z.enum(["B1", "B2"]).optional(),
-  example: z.string().optional(),
+  example: z.preprocess(emptyToUndefined, z.string().trim().optional()),
   autoFill: z.boolean().optional()
 });
 
 const updateWordSchema = z.object({
-  english: z.string().min(1).optional(),
-  mongolian: z.string().min(1).optional(),
+  english: z.preprocess(emptyToUndefined, z.string().trim().min(1).optional()),
+  mongolian: z.preprocess(emptyToUndefined, z.string().trim().min(1).optional()),
   level: z.enum(["B1", "B2"]).optional(),
-  example: z.string().optional()
+  example: z.preprocess(emptyToUndefined, z.string().trim().optional())
 });
 
 router.get("/today", requireAuth, async (req: AuthRequest, res, next) => {

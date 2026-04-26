@@ -11,7 +11,6 @@ import type { Word, TodayStats } from "../lib/types";
 import {
   fetchTodayStats,
   deleteWord,
-  fetchWeakWords,
   fetchWordsByMonth,
 } from "../lib/api";
 import { toast } from "../lib/toast";
@@ -20,17 +19,66 @@ import ProgressPanel from "../components/ProgressPanel";
 import AchievementPanel from "../components/AchievementPanel";
 import { useUser } from "@clerk/nextjs";
 import AuthGate from "../components/AuthGate";
+import { useLanguage } from "../components/LanguageProvider";
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
+  const { language } = useLanguage();
   const authLoading = !isLoaded;
   const [words, setWords] = useState<Word[]>([]);
   const [stats, setStats] = useState<TodayStats | null>(null);
-  const [weakWords, setWeakWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
   const [monthFilter, setMonthFilter] = useState<string>(() =>
     new Date().toISOString().slice(0, 7),
   );
+  const copy =
+    language === "mn"
+      ? {
+          authTitle: "Үгийн сангаа харахын тулд нэвтэрнэ үү",
+          authMessage: "Таны үгс, streak, статистик бүгд хувийн мэдээлэл тул нэвтэрч байж харагдана.",
+          deleteSuccess: "Үг амжилттай устлаа",
+          deleteError: "Үгийг устгаж чадсангүй",
+          title: "Энэ сарын үгс",
+          subtitle: "Нэмсэн бүх үгээ өдөр өдрөөр нь харна",
+          words: "үг",
+          noWords: "Энэ сард одоогоор үг нэмэгдээгүй байна.",
+          addedThisMonth: "Энэ сард нэмсэн",
+          totalSaved: "Нийт хадгалсан",
+          todayScore: "Өнөөдрийн оноо",
+          scoreFallback: "Өгөөгүй",
+          quickActions: [
+            { href: "/add", label: "Шинэ үг нэмэх", icon: <FiPlusCircle /> },
+            { href: "/quiz", label: "Шалгалт өгөх", icon: <FiZap /> },
+            { href: "/stats", label: "Хувийн статистик", icon: <FiBarChart2 /> },
+          ],
+          monthOverview: "Сарын тойм",
+          supportTitle: "Өнөөдрийн самбар",
+          supportText: "Давтлага, XP, амжилтаа нэг дороос хянаарай.",
+          floatingAdd: "Үг нэмэх",
+        }
+      : {
+          authTitle: "Sign in to see your vocabulary lab",
+          authMessage: "Your word deck, streak, and stats are personal. Log in to view them.",
+          deleteSuccess: "Word deleted",
+          deleteError: "Failed to delete word",
+          title: "Words this month",
+          subtitle: "Browse everything you added, grouped by day",
+          words: "words",
+          noWords: "No words in this month yet.",
+          addedThisMonth: "Added this month",
+          totalSaved: "Total saved",
+          todayScore: "Today's quiz score",
+          scoreFallback: "Not taken",
+          quickActions: [
+            { href: "/add", label: "Add new words", icon: <FiPlusCircle /> },
+            { href: "/quiz", label: "Take a quiz", icon: <FiZap /> },
+            { href: "/stats", label: "Personal stats", icon: <FiBarChart2 /> },
+          ],
+          monthOverview: "Month overview",
+          supportTitle: "Today's board",
+          supportText: "Keep review, XP, and progress in one calm place.",
+          floatingAdd: "Add words",
+        };
 
   useEffect(() => {
     const load = async () => {
@@ -38,18 +86,15 @@ export default function DashboardPage() {
         if (!user) {
           setWords([]);
           setStats(null);
-          setWeakWords([]);
           return;
         }
         const [year, month] = monthFilter.split("-").map(Number);
-        const [wordsData, statsData, weakData] = await Promise.all([
+        const [wordsData, statsData] = await Promise.all([
           fetchWordsByMonth(year, month),
           fetchTodayStats(),
-          fetchWeakWords(6),
         ]);
         setWords(wordsData);
         setStats(statsData);
-        setWeakWords(weakData);
       } catch (err) {
         setWords([]);
       } finally {
@@ -73,8 +118,8 @@ export default function DashboardPage() {
   if (!authLoading && !user) {
     return (
       <AuthGate
-        title="Sign in to see your vocabulary lab"
-        message="Your word deck, streak, and stats are personal. Log in to view them."
+        title={copy.authTitle}
+        message={copy.authMessage}
       />
     );
   }
@@ -83,60 +128,106 @@ export default function DashboardPage() {
     try {
       await deleteWord(id);
       setWords((prev) => prev.filter((word) => word.id !== id));
-      toast("Word deleted", "success");
+      toast(copy.deleteSuccess, "success");
     } catch (error) {
-      toast("Failed to delete word", "error");
+      toast(copy.deleteError, "error");
     }
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-6 py-10 pb-16">
+    <div className="mx-auto max-w-6xl space-y-8 px-5 py-8 pb-16 sm:px-6 lg:space-y-10">
       <StreakBadge streak={stats?.streak ?? 0} dateLabel={stats?.date ?? ""} />
 
-      <section className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-4">
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-[28px] border border-border bg-surface/80 p-6 md:col-span-2">
+          <p className="text-sm text-muted">{copy.monthOverview}</p>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="font-display text-3xl text-text sm:text-4xl">{copy.title}</h1>
+              <p className="mt-2 max-w-xl text-sm text-muted">{copy.subtitle}</p>
+            </div>
+            <div className="grid min-w-[220px] gap-2 sm:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-surface2 px-4 py-3">
+                <p className="text-xs text-muted">{copy.addedThisMonth}</p>
+                <p className="mt-1 font-display text-2xl text-accent">{words.length}</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-surface2 px-4 py-3">
+                <p className="text-xs text-muted">{copy.totalSaved}</p>
+                <p className="mt-1 font-display text-2xl text-text">{stats?.totalWords ?? words.length}</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-surface2 px-4 py-3">
+                <p className="text-xs text-muted">{copy.todayScore}</p>
+                <p className="mt-1 font-display text-2xl text-accent3">
+                  {stats?.quizScore ?? copy.scoreFallback}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[28px] border border-border bg-surface/80 p-6">
+          <p className="text-sm text-muted">{copy.supportTitle}</p>
+          <p className="mt-3 text-lg text-text">{copy.supportText}</p>
+          <div className="mt-5 grid gap-3">
+            {copy.quickActions.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="inline-flex items-center justify-between rounded-2xl border border-border bg-surface2 px-4 py-3 text-sm text-text transition hover:border-accent hover:text-accent"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {item.icon} {item.label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_360px]">
+        <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="font-display text-2xl">All Words</h2>
-              <span className="text-sm text-muted font-mono">
-                {words.length} words
+              <h2 className="font-display text-2xl">{copy.title}</h2>
+              <span className="font-mono text-sm text-muted">
+                {words.length} {copy.words}
               </span>
             </div>
             <input
               type="month"
               value={monthFilter}
               onChange={(e) => setMonthFilter(e.target.value)}
-              className="rounded-xl border border-border bg-surface2 px-3 py-2 text-sm text-text"
+              className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text"
             />
           </div>
 
           {loading && (
-            <div className="grid gap-4 md:grid-cols-3">
-              {[0, 1, 2].map((item) => (
+            <div className="grid gap-4 md:grid-cols-2">
+              {[0, 1, 2, 3].map((item) => (
                 <div
                   key={item}
-                  className="h-56 rounded-2xl border border-border bg-surface animate-pulse"
+                  className="h-56 rounded-[24px] border border-border bg-surface animate-pulse"
                 />
               ))}
             </div>
           )}
 
           {!loading && words.length === 0 && (
-            <div className="rounded-2xl border border-border bg-surface p-8 text-center text-muted">
-              No words in this month yet.
+            <div className="rounded-[24px] border border-dashed border-border bg-surface/70 p-10 text-center text-muted">
+              {copy.noWords}
             </div>
           )}
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {grouped.map(([date, list]) => (
               <div key={date} className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-lg">{date}</h3>
                   <span className="text-xs text-muted">
-                    {list.length} words
+                    {list.length} {copy.words}
                   </span>
                 </div>
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
                   {list.map((word, index) => (
                     <WordCard
                       key={word.id}
@@ -150,31 +241,10 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+
         <div className="space-y-4">
           <ProgressPanel />
           <ReviewPanel />
-          <div className="rounded-2xl border border-border bg-surface p-6">
-            <h3 className="font-display text-lg">Weak words</h3>
-            <div className="mt-4 space-y-3">
-              {weakWords.length === 0 && (
-                <p className="text-sm text-muted">No weak words yet.</p>
-              )}
-              {weakWords.map((word) => (
-                <div
-                  key={word.id}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <div>
-                    <p className="text-text">{word.english}</p>
-                    <p className="text-xs text-muted">{word.mongolian}</p>
-                  </div>
-                  <span className="text-xs text-accent2 font-mono">
-                    -{word.wrongCount ?? 0}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
           <AchievementPanel />
         </div>
       </section>
@@ -188,23 +258,7 @@ export default function DashboardPage() {
           show: { transition: { staggerChildren: 0.08 } },
         }}
       >
-        {[
-          {
-            href: "/add",
-            label: "Add new words",
-            icon: <FiPlusCircle />,
-          },
-          {
-            href: "/quiz",
-            label: "Take a quiz",
-            icon: <FiZap />,
-          },
-          {
-            href: "/stats",
-            label: "Personal stats",
-            icon: <FiBarChart2 />,
-          },
-        ].map((item) => (
+        {copy.quickActions.map((item) => (
           <motion.div
             key={item.href}
             variants={{
@@ -228,6 +282,7 @@ export default function DashboardPage() {
 
       <Link
         href="/add"
+        aria-label={copy.floatingAdd}
         className="fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-accent bg-accent/20 text-3xl text-accent shadow-glow"
       >
         <FiPlusCircle />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLanguage } from "./LanguageProvider";
 
 function getTimeZoneOffsetMs(date: Date, timeZone: string): number {
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -50,6 +51,7 @@ function getNextQuizTime(timeZone: string) {
 }
 
 export default function CountdownTimer() {
+  const { language } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [remaining, setRemaining] = useState<number>(0);
   const [isReady, setIsReady] = useState(false);
@@ -74,11 +76,15 @@ export default function CountdownTimer() {
   }, [remaining]);
 
   const isDanger = remaining <= 10 * 60 * 1000;
+  const copy =
+    language === "mn"
+      ? { title: "22:00 цагийн шалгалт хүртэл", live: "Шалгалт эхэллээ!" }
+      : { title: "Time until 22:00 quiz", live: "Quiz is live!" };
 
   if (!mounted) {
     return (
       <div className="rounded-2xl border border-border bg-surface2 px-6 py-4 text-center">
-        <p className="text-sm text-muted">Time until 22:00 quiz</p>
+        <p className="text-sm text-muted">{copy.title}</p>
         <div className="mt-2 font-mono text-3xl text-accent">--:--:--</div>
       </div>
     );
@@ -86,11 +92,11 @@ export default function CountdownTimer() {
 
   return (
     <div className={`rounded-2xl border px-6 py-4 text-center ${isDanger ? "border-accent2" : "border-border"} bg-surface2`}>
-      <p className="text-sm text-muted">Time until 22:00 quiz</p>
+      <p className="text-sm text-muted">{copy.title}</p>
       <div className={`mt-2 font-mono text-3xl ${isDanger ? "text-accent2" : "text-accent"}`}>
         {String(hours).padStart(2, "0")}:{String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
       </div>
-      {isReady && <p className="mt-2 text-sm text-accent3">Quiz is live!</p>}
+      {isReady && <p className="mt-2 text-sm text-accent3">{copy.live}</p>}
     </div>
   );
 }

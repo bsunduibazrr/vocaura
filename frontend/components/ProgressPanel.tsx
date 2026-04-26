@@ -4,9 +4,25 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import type { Progress } from "../lib/types";
 import { ApiError, fetchProgress } from "../lib/api";
+import { useLanguage } from "./LanguageProvider";
 
 export default function ProgressPanel() {
+  const { language } = useLanguage();
   const [progress, setProgress] = useState<Progress | null>(null);
+  const copy =
+    language === "mn"
+      ? {
+          xpToNext: "XP дараагийн түвшин хүртэл",
+          level: "Түвшин",
+          streak: "Цуврал",
+          best: "Хамгийн урт"
+        }
+      : {
+          xpToNext: "XP to next level",
+          level: "Level",
+          streak: "Streak",
+          best: "Best"
+        };
 
   useEffect(() => {
     const load = async () => {
@@ -46,7 +62,7 @@ export default function ProgressPanel() {
           <p className="font-display text-2xl text-accent">{progress.xp}</p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-muted">Level {progress.level}</p>
+          <p className="text-xs text-muted">{copy.level} {progress.level}</p>
           <p className="text-sm text-text">{progress.levelLabel}</p>
         </div>
       </div>
@@ -57,10 +73,10 @@ export default function ProgressPanel() {
           animate={{ width: `${xpProgress * 100}%` }}
         />
       </div>
-      <p className="text-xs text-muted">{xpToNext} XP to next level</p>
+      <p className="text-xs text-muted">{xpToNext} {copy.xpToNext}</p>
       <div className="flex items-center gap-3 text-xs text-muted">
-        <span>Streak: {progress.streak} days</span>
-        <span>Best: {progress.longestStreak}</span>
+        <span>{copy.streak}: {progress.streak}</span>
+        <span>{copy.best}: {progress.longestStreak}</span>
       </div>
     </div>
   );

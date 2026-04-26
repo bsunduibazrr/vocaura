@@ -14,9 +14,11 @@ import type { DayStats, HeatmapDay, TodayStats, Word } from "../../lib/types";
 import { ApiError, fetchHeatmap, fetchMastery, fetchMonthStats, fetchTodayStats, fetchWeekStats, fetchWordsByDate } from "../../lib/api";
 import { useUser } from "@clerk/nextjs";
 import AuthGate from "../../components/AuthGate";
+import { useLanguage } from "../../components/LanguageProvider";
 
 export default function StatsPage() {
   const { user, isLoaded } = useUser();
+  const { language } = useLanguage();
   const authLoading = !isLoaded;
   const router = useRouter();
   const [tab, setTab] = useState<"today" | "week" | "month">("today");
@@ -30,6 +32,66 @@ export default function StatsPage() {
   const [heatmapDate, setHeatmapDate] = useState<string | null>(null);
   const [heatmapWords, setHeatmapWords] = useState<Word[]>([]);
   const [showWeak, setShowWeak] = useState(false);
+  const copy =
+    language === "mn"
+      ? {
+          authTitle: "Статистикаа харахын тулд нэвтэрнэ үү",
+          authMessage: "Таны ахиц, chart, амжилтууд аккаунт дээр хадгалагдана.",
+          tabs: [
+            { id: "today", label: "Өнөөдөр" },
+            { id: "week", label: "7 хоног" },
+            { id: "month", label: "Сар" }
+          ],
+          wordsToday: "Өнөөдөр нэмсэн үг",
+          quizScore: "Шалгалтын оноо",
+          timeStudied: "Суралцсан хугацаа",
+          streak: "Цуврал",
+          days: "хоног",
+          min: "мин",
+          totalMonth: "Энэ сарын нийт үг",
+          averageScore: "Дундаж оноо",
+          heatmap: "Суралцсан heatmap (90 хоног)",
+          noWords: "Үг алга байна.",
+          wordsOn: (date: string) => `${date} өдөр нэмсэн үгс`,
+          weakTitle: "Mastery оноо — сул үгс",
+          hide: "Нуух",
+          show: "Харах",
+          noData: "Одоогоор дата алга.",
+          wordsAdded: "Нэмсэн үг",
+          scoreLabel: "Шалгалтын оноо",
+          home: "Нүүр",
+          add: "Үг нэмэх",
+          quiz: "Шалгалт",
+        }
+      : {
+          authTitle: "Sign in to view stats",
+          authMessage: "Your progress chart and achievements live under your account.",
+          tabs: [
+            { id: "today", label: "Today" },
+            { id: "week", label: "7 days" },
+            { id: "month", label: "Month" }
+          ],
+          wordsToday: "Words added today",
+          quizScore: "Quiz score",
+          timeStudied: "Time studied",
+          streak: "Streak",
+          days: "days",
+          min: "min",
+          totalMonth: "Total words this month",
+          averageScore: "Average score",
+          heatmap: "Study heatmap (90 days)",
+          noWords: "No words.",
+          wordsOn: (date: string) => `Words on ${date}`,
+          weakTitle: "Mastery score — weak words",
+          hide: "Hide",
+          show: "Show",
+          noData: "No data yet.",
+          wordsAdded: "Words added",
+          scoreLabel: "Quiz score",
+          home: "Home",
+          add: "Add words",
+          quiz: "Quiz",
+        };
 
   useEffect(() => {
     const load = async () => {
@@ -79,8 +141,8 @@ export default function StatsPage() {
   if (!authLoading && !user) {
     return (
       <AuthGate
-        title="Sign in to view stats"
-        message="Your progress chart and achievements live under your account."
+        title={copy.authTitle}
+        message={copy.authMessage}
       />
     );
   }
@@ -88,11 +150,7 @@ export default function StatsPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-12 space-y-6">
       <div className="flex gap-3">
-        {[
-          { id: "today", label: "Today" },
-          { id: "week", label: "7 days" },
-          { id: "month", label: "Month" }
-        ].map((item) => (
+        {copy.tabs.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -117,20 +175,20 @@ export default function StatsPage() {
       {!loading && tab === "today" && (
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-border bg-surface p-6">
-            <p className="text-sm text-muted">Words added today</p>
+            <p className="text-sm text-muted">{copy.wordsToday}</p>
             <p className="font-display text-3xl text-accent">{today?.wordsAdded ?? 0}</p>
           </div>
           <div className="rounded-2xl border border-border bg-surface p-6">
-            <p className="text-sm text-muted">Quiz score</p>
+            <p className="text-sm text-muted">{copy.quizScore}</p>
             <p className="font-display text-3xl text-accent3">{today?.quizScore ?? 0}</p>
           </div>
           <div className="rounded-2xl border border-border bg-surface p-6">
-            <p className="text-sm text-muted">Time studied</p>
-            <p className="font-display text-3xl text-text">~{Math.max(1, Math.round((today?.wordsAdded ?? 0) / 3))} min</p>
+            <p className="text-sm text-muted">{copy.timeStudied}</p>
+            <p className="font-display text-3xl text-text">~{Math.max(1, Math.round((today?.wordsAdded ?? 0) / 3))} {copy.min}</p>
           </div>
           <div className="rounded-2xl border border-border bg-surface p-6">
-            <p className="text-sm text-muted">Streak</p>
-            <p className="font-display text-3xl text-accent2">{today?.streak ?? 0} days</p>
+            <p className="text-sm text-muted">{copy.streak}</p>
+            <p className="font-display text-3xl text-accent2">{today?.streak ?? 0} {copy.days}</p>
           </div>
         </div>
       )}
@@ -141,16 +199,16 @@ export default function StatsPage() {
         <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-border bg-surface p-6">
-              <p className="text-sm text-muted">Total words this month</p>
+              <p className="text-sm text-muted">{copy.totalMonth}</p>
               <p className="font-display text-3xl text-accent">{monthSummary.totalWords}</p>
             </div>
             <div className="rounded-2xl border border-border bg-surface p-6">
-              <p className="text-sm text-muted">Average score</p>
+              <p className="text-sm text-muted">{copy.averageScore}</p>
               <p className="font-display text-3xl text-accent3">{monthSummary.avgQuiz}</p>
             </div>
           </div>
           <div className="rounded-2xl border border-border bg-surface p-6">
-            <p className="text-sm text-muted">Study heatmap (90 days)</p>
+            <p className="text-sm text-muted">{copy.heatmap}</p>
             <div className="mt-4 grid grid-cols-10 sm:grid-cols-15 gap-2">
               {heatmap.map((day) => {
                 const intensity = Math.min(day.count / 20, 1);
@@ -183,10 +241,10 @@ export default function StatsPage() {
           </div>
           {heatmapDate && (
             <div className="rounded-2xl border border-border bg-surface p-6">
-              <p className="text-sm text-muted">Words on {heatmapDate}</p>
+              <p className="text-sm text-muted">{copy.wordsOn(heatmapDate)}</p>
               <div className="mt-4 space-y-3">
                 {heatmapWords.length === 0 && (
-                  <p className="text-sm text-muted">No words.</p>
+                  <p className="text-sm text-muted">{copy.noWords}</p>
                 )}
                 {heatmapWords.map((word) => (
                   <div key={word.id} className="flex items-center justify-between text-sm">
@@ -206,9 +264,9 @@ export default function StatsPage() {
               onClick={() => setShowWeak((prev) => !prev)}
               className="flex w-full items-center justify-between text-sm text-muted"
             >
-              <span>Mastery score — weak words</span>
+              <span>{copy.weakTitle}</span>
               <span className="text-xs inline-flex items-center gap-2">
-                {showWeak ? "Hide" : "Show"}
+                {showWeak ? copy.hide : copy.show}
                 <motion.span
                   animate={{ rotate: showWeak ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
@@ -227,7 +285,7 @@ export default function StatsPage() {
                 className="mt-4 space-y-3 overflow-hidden"
               >
                 {weakMastery.length === 0 && (
-                  <p className="text-sm text-muted">No data yet.</p>
+                  <p className="text-sm text-muted">{copy.noData}</p>
                 )}
                 {weakMastery.map((word) => (
                   <div key={word.id} className="flex items-center justify-between text-sm">
@@ -245,8 +303,8 @@ export default function StatsPage() {
           {selectedDay && (
             <div className="rounded-2xl border border-border bg-surface2 p-6">
               <p className="text-sm text-muted">{selectedDay.date}</p>
-              <p className="text-lg text-text">Words added: {selectedDay.wordsAdded}</p>
-              <p className="text-lg text-text">Quiz score: {selectedDay.quizScore ?? 0}</p>
+              <p className="text-lg text-text">{copy.wordsAdded}: {selectedDay.wordsAdded}</p>
+              <p className="text-lg text-text">{copy.scoreLabel}: {selectedDay.quizScore ?? 0}</p>
             </div>
           )}
         </div>
@@ -260,15 +318,15 @@ export default function StatsPage() {
       >
         {[{
           href: "/",
-          label: "Home",
+          label: copy.home,
           icon: <FiHome />
         }, {
           href: "/add",
-          label: "Add words",
+          label: copy.add,
           icon: <FiPlusCircle />
         }, {
           href: "/quiz",
-          label: "Quiz",
+          label: copy.quiz,
           icon: <FiZap />
         }].map((item) => (
           <motion.div key={item.href} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>

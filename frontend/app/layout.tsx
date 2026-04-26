@@ -3,6 +3,7 @@ import { Syne, DM_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import AppShell from "../components/AppShell";
 import ClerkTokenBridge from "../components/ClerkTokenBridge";
+import { LanguageProvider } from "../components/LanguageProvider";
 import "./globals.css";
 
 const syne = Syne({
@@ -66,8 +67,10 @@ export default function RootLayout({
     <html lang="mn" className={`${syne.variable} ${dmSans.variable}`}>
       <body>
         <ClerkProvider appearance={clerkAppearance}>
-          <ClerkTokenBridge />
-          <AppShell>{children}</AppShell>
+          <LanguageProvider>
+            <ClerkTokenBridge />
+            <AppShell>{children}</AppShell>
+          </LanguageProvider>
         </ClerkProvider>
       </body>
     </html>

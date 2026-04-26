@@ -21,27 +21,75 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import ToastHost from "./ToastHost";
 import { ApiError, claimLegacyWords } from "../lib/api";
 import { toast } from "../lib/toast";
+import { useLanguage } from "./LanguageProvider";
 
-const primaryLinks = [
-  { href: "/", label: "Today", icon: FiHome },
-  { href: "/add", label: "Add words", icon: FiPlusCircle },
-  { href: "/quiz", label: "Quiz", icon: FiZap }
-];
-
-const secondaryLinks = [
-  { href: "/words", label: "Words", icon: FiBookOpen },
-  { href: "/guide", label: "Guide", icon: FiInfo },
-  { href: "/stats", label: "Stats", icon: FiBarChart2 }
-];
+const labels = {
+  mn: {
+    brand: "Үгийн лаборатори",
+    primaryLinks: [
+      { href: "/", label: "Өнөөдөр", icon: FiHome },
+      { href: "/add", label: "Үг нэмэх", icon: FiPlusCircle },
+      { href: "/quiz", label: "Шалгалт", icon: FiZap }
+    ],
+    secondaryLinks: [
+      { href: "/words", label: "Үгс", icon: FiBookOpen },
+      { href: "/guide", label: "Заавар", icon: FiInfo },
+      { href: "/stats", label: "Статистик", icon: FiBarChart2 }
+    ],
+    more: "Бусад",
+    login: "Нэвтрэх",
+    signup: "Бүртгүүлэх",
+    profile: "Профайл",
+    memberSince: "Элссэн",
+    restoring: "Сэргээж байна...",
+    restoreLegacy: "Хуучин үгсээ сэргээх",
+    restoreWords: "Үгсээ сэргээх",
+    logout: "Гарах",
+    restoredSuccess: (count: number) => `${count} хуучин үг сэргээгдлээ`,
+    restoreError: "Хуучин үгсийг сэргээж чадсангүй",
+    language: "Хэл",
+    mongolian: "MN",
+    english: "EN",
+  },
+  en: {
+    brand: "Vocab Lab",
+    primaryLinks: [
+      { href: "/", label: "Today", icon: FiHome },
+      { href: "/add", label: "Add words", icon: FiPlusCircle },
+      { href: "/quiz", label: "Quiz", icon: FiZap }
+    ],
+    secondaryLinks: [
+      { href: "/words", label: "Words", icon: FiBookOpen },
+      { href: "/guide", label: "Guide", icon: FiInfo },
+      { href: "/stats", label: "Stats", icon: FiBarChart2 }
+    ],
+    more: "More",
+    login: "Login",
+    signup: "Sign up",
+    profile: "Profile",
+    memberSince: "Member since",
+    restoring: "Restoring...",
+    restoreLegacy: "Restore legacy words",
+    restoreWords: "Restore words",
+    logout: "Logout",
+    restoredSuccess: (count: number) => `Restored ${count} legacy words`,
+    restoreError: "Failed to restore legacy words",
+    language: "Language",
+    mongolian: "MN",
+    english: "EN",
+  }
+} as const;
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const { signOut } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const moreRef = useRef<HTMLDivElement | null>(null);
+  const copy = labels[language];
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -72,9 +120,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setClaiming(true);
     try {
       const res = await claimLegacyWords();
-      toast(`Restored ${res.claimed} legacy words`, "success");
+      toast(copy.restoredSuccess(res.claimed), "success");
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to restore legacy words";
+      const message =
+        error instanceof ApiError ? error.message : copy.restoreError;
       toast(message, "error");
     } finally {
       setClaiming(false);
@@ -95,13 +144,40 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="min-w-0">
               <span className="block truncate font-display text-xl tracking-widest text-accent">Vocaura</span>
-              <span className="block truncate font-mono text-xs uppercase tracking-[0.3em] text-muted">Vocab Lab</span>
+              <span className="block truncate font-mono text-xs uppercase tracking-[0.3em] text-muted">{copy.brand}</span>
             </div>
           </Link>
 
           <div className="hidden items-center gap-2 lg:flex">
+            <div className="flex items-center gap-1 rounded-full border border-border/60 bg-surface/60 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setLanguage("mn")}
+                className={`rounded-full px-3 py-2 transition ${
+                  language === "mn"
+                    ? "bg-accent/15 text-accent"
+                    : "text-muted hover:text-text"
+                }`}
+                aria-pressed={language === "mn"}
+              >
+                {copy.mongolian}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage("en")}
+                className={`rounded-full px-3 py-2 transition ${
+                  language === "en"
+                    ? "bg-accent/15 text-accent"
+                    : "text-muted hover:text-text"
+                }`}
+                aria-pressed={language === "en"}
+              >
+                {copy.english}
+              </button>
+            </div>
+
             <nav className="flex items-center gap-2 rounded-full border border-border/60 bg-surface/50 p-1 text-sm">
-              {primaryLinks.map((item) => {
+              {copy.primaryLinks.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
@@ -120,7 +196,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setMoreOpen((prev) => !prev)}
                   className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-text transition hover:border-accent hover:text-accent"
                 >
-                  More <FiChevronDown className={`transition ${moreOpen ? "rotate-180" : ""}`} />
+                  {copy.more} <FiChevronDown className={`transition ${moreOpen ? "rotate-180" : ""}`} />
                 </button>
                 <AnimatePresence>
                   {moreOpen && (
@@ -130,7 +206,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       exit={{ opacity: 0, y: 8, scale: 0.98 }}
                       className="absolute right-0 top-full mt-3 w-48 rounded-2xl border border-border bg-surface p-2 shadow-[0_24px_60px_rgba(0,0,0,0.45)]"
                     >
-                      {secondaryLinks.map((item) => {
+                      {copy.secondaryLinks.map((item) => {
                         const Icon = item.icon;
                         return (
                           <Link
@@ -155,13 +231,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   href="/login"
                   className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-text transition hover:border-accent hover:text-accent"
                 >
-                  <FiLogIn /> Login
+                  <FiLogIn /> {copy.login}
                 </Link>
                 <Link
                   href="/login?mode=sign-up"
                   className="inline-flex items-center gap-2 rounded-full border border-accent bg-accent/10 px-4 py-2 text-accent transition hover:bg-accent/20"
                 >
-                  <FiUser /> Sign up
+                  <FiUser /> {copy.signup}
                 </Link>
               </div>
             ) : (
@@ -183,16 +259,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       transition={{ duration: 0.2 }}
                       className="absolute right-0 mt-3 w-64 rounded-2xl border border-border bg-surface p-4 shadow-[0_24px_60px_rgba(0,0,0,0.45)]"
                     >
-                      <p className="text-xs uppercase tracking-[0.3em] text-muted">Profile</p>
+                      <p className="text-xs uppercase tracking-[0.3em] text-muted">{copy.profile}</p>
                       <p className="mt-2 text-sm text-text">{user.primaryEmailAddress?.emailAddress}</p>
                       <p className="text-xs text-muted">
-                        Member since {user.createdAt ? new Date(user.createdAt).toLocaleDateString("mn-MN") : "-"}
+                        {copy.memberSince} {user.createdAt ? new Date(user.createdAt).toLocaleDateString(language === "mn" ? "mn-MN" : "en-US") : "-"}
                       </p>
                       <button
                         onClick={restoreLegacy}
                         className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-border bg-surface2 px-4 py-2 text-sm text-text transition hover:border-accent hover:text-accent"
                       >
-                        {claiming ? "Restoring..." : "Restore legacy words"}
+                        {claiming ? copy.restoring : copy.restoreLegacy}
                       </button>
                       <button
                         onClick={() => {
@@ -201,7 +277,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         }}
                         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-accent2 bg-accent2/15 px-4 py-2 text-sm text-accent2 transition hover:bg-accent2/25"
                       >
-                        <FiLogOut /> Logout
+                        <FiLogOut /> {copy.logout}
                       </button>
                     </motion.div>
                   )}
@@ -228,8 +304,36 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               className="border-t border-border/70 px-4 py-4 sm:px-6 lg:hidden"
             >
               <div className="mx-auto flex max-w-6xl flex-col gap-3">
+                <div className="flex items-center justify-between rounded-2xl border border-border bg-surface px-4 py-3">
+                  <span className="text-sm text-muted">{copy.language}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLanguage("mn")}
+                      className={`rounded-full px-3 py-2 text-xs transition ${
+                        language === "mn"
+                          ? "bg-accent/15 text-accent"
+                          : "border border-border text-muted"
+                      }`}
+                    >
+                      {copy.mongolian}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLanguage("en")}
+                      className={`rounded-full px-3 py-2 text-xs transition ${
+                        language === "en"
+                          ? "bg-accent/15 text-accent"
+                          : "border border-border text-muted"
+                      }`}
+                    >
+                      {copy.english}
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {[...primaryLinks, ...secondaryLinks].map((item) => {
+                  {[...copy.primaryLinks, ...copy.secondaryLinks].map((item) => {
                     const Icon = item.icon;
                     return (
                       <Link
@@ -251,14 +355,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       onClick={() => setMobileNavOpen(false)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border px-4 py-3 text-sm text-text transition hover:border-accent hover:text-accent"
                     >
-                      <FiLogIn /> Login
+                      <FiLogIn /> {copy.login}
                     </Link>
                     <Link
                       href="/login?mode=sign-up"
                       onClick={() => setMobileNavOpen(false)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-accent bg-accent/10 px-4 py-3 text-sm text-accent transition hover:bg-accent/20"
                     >
-                      <FiUser /> Sign up
+                      <FiUser /> {copy.signup}
                     </Link>
                   </div>
                 ) : (
@@ -272,7 +376,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         }}
                         className="inline-flex items-center justify-center rounded-xl border border-border bg-surface2 px-4 py-3 text-sm text-text transition hover:border-accent hover:text-accent"
                       >
-                        {claiming ? "Restoring..." : "Restore words"}
+                        {claiming ? copy.restoring : copy.restoreWords}
                       </button>
                       <button
                         onClick={() => {
@@ -281,7 +385,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                         }}
                         className="inline-flex items-center justify-center rounded-xl border border-accent2 bg-accent2/15 px-4 py-3 text-sm text-accent2 transition hover:bg-accent2/25"
                       >
-                        <FiLogOut /> Logout
+                        <FiLogOut /> {copy.logout}
                       </button>
                     </div>
                   </div>

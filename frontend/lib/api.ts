@@ -1,5 +1,12 @@
-import type { Word, QuizQuestion, QuizResult, DayStats, TodayStats } from "./types";
+import type {
+  Word,
+  QuizQuestion,
+  QuizResult,
+  DayStats,
+  TodayStats,
+} from "./types";
 import { getAuthToken } from "./authToken";
+import { log } from "console";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -14,14 +21,16 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = await getAuthToken();
+  console.log(token, "here is token");
+
   const response = await fetch(`${API_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     credentials: "include",
     cache: "no-store",
-    ...options
+    ...options,
   });
 
   if (!response.ok) {
@@ -51,14 +60,23 @@ export async function fetchTodayWords(): Promise<Word[]> {
   return request<Word[]>("/api/words/today");
 }
 
-export async function fetchAllWords(page = 1, limit = 20): Promise<{ total: number; page: number; limit: number; data: Word[] }> {
+export async function fetchAllWords(
+  page = 1,
+  limit = 20,
+): Promise<{ total: number; page: number; limit: number; data: Word[] }> {
   return request(`/api/words/all?page=${page}&limit=${limit}`);
 }
 
-export async function addWord(payload: { english: string; mongolian: string; level: "B1" | "B2"; example?: string; autoFill?: boolean }): Promise<Word> {
+export async function addWord(payload: {
+  english: string;
+  mongolian?: string;
+  level: "B1" | "B2";
+  example?: string;
+  autoFill?: boolean;
+}): Promise<Word> {
   return request<Word>("/api/words", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
@@ -68,37 +86,54 @@ export async function deleteWord(id: string): Promise<void> {
 
 export async function updateWord(
   id: string,
-  payload: { english?: string; mongolian?: string; level?: "B1" | "B2"; example?: string }
+  payload: {
+    english?: string;
+    mongolian?: string;
+    level?: "B1" | "B2";
+    example?: string;
+  },
 ): Promise<Word> {
   return request<Word>(`/api/words/${id}`, {
     method: "PUT",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
-
-export async function suggestWord(query: string): Promise<{ english: string; mongolian: string }> {
+export async function suggestWord(
+  query: string,
+): Promise<{ english: string; mongolian: string }> {
   return request(`/api/words/suggest?q=${encodeURIComponent(query)}`);
 }
 
-export async function generateExample(payload: { english: string; mongolian?: string }): Promise<{ example: string }> {
+export async function generateExample(payload: {
+  english: string;
+  mongolian?: string;
+}): Promise<{ example: string }> {
   const params = new URLSearchParams({ english: payload.english });
   if (payload.mongolian) params.set("mongolian", payload.mongolian);
   return request(`/api/words/example?${params.toString()}`);
 }
 
-export async function fetchQuizQuestions(mode: "standard" | "spelling" | "fill" | "boss" = "standard"): Promise<QuizQuestion[]> {
+export async function fetchQuizQuestions(
+  mode: "standard" | "spelling" | "fill" | "boss" = "standard",
+): Promise<QuizQuestion[]> {
   return request<QuizQuestion[]>(`/api/quiz/generate?mode=${mode}`);
 }
 
-export async function submitQuiz(payload: { answers: { question: string; selected: string; correctAnswer: string }[] }): Promise<QuizResult> {
+export async function submitQuiz(payload: {
+  answers: { question: string; selected: string; correctAnswer: string }[];
+}): Promise<QuizResult> {
   return request<QuizResult>("/api/quiz/submit", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
-export async function fetchQuizResultToday(): Promise<{ score: number; totalWords: number; feedback?: string } | null> {
+export async function fetchQuizResultToday(): Promise<{
+  score: number;
+  totalWords: number;
+  feedback?: string;
+} | null> {
   return request("/api/quiz/result/today");
 }
 
@@ -122,10 +157,13 @@ export async function fetchReviewQueue(limit = 5): Promise<Word[]> {
   return request<Word[]>(`/api/review/queue?limit=${limit}`);
 }
 
-export async function submitReview(payload: { wordId: string; rating: "again" | "hard" | "good" | "easy" }): Promise<Word> {
+export async function submitReview(payload: {
+  wordId: string;
+  rating: "again" | "hard" | "good" | "easy";
+}): Promise<Word> {
   return request<Word>("/api/review/submit", {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
@@ -137,15 +175,22 @@ export async function fetchProgress(): Promise<import("./types").Progress> {
   return request("/api/progress");
 }
 
-export async function fetchAchievements(): Promise<import("./types").Achievement[]> {
+export async function fetchAchievements(): Promise<
+  import("./types").Achievement[]
+> {
   return request("/api/achievements");
 }
 
-export async function fetchHeatmap(days = 90): Promise<import("./types").HeatmapDay[]> {
+export async function fetchHeatmap(
+  days = 90,
+): Promise<import("./types").HeatmapDay[]> {
   return request(`/api/stats/heatmap?days=${days}`);
 }
 
-export async function fetchMastery(limit = 10, order: "asc" | "desc" = "asc"): Promise<Word[]> {
+export async function fetchMastery(
+  limit = 10,
+  order: "asc" | "desc" = "asc",
+): Promise<Word[]> {
   return request(`/api/words/mastery?limit=${limit}&order=${order}`);
 }
 
@@ -161,6 +206,9 @@ export async function restoreWord(id: string): Promise<Word> {
   return request(`/api/words/${id}/restore`, { method: "POST" });
 }
 
-export async function fetchWordsByMonth(year: number, month: number): Promise<Word[]> {
+export async function fetchWordsByMonth(
+  year: number,
+  month: number,
+): Promise<Word[]> {
   return request(`/api/words/by-month?year=${year}&month=${month}`);
 }

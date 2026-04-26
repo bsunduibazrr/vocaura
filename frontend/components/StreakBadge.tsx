@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useLanguage } from "./LanguageProvider";
 
 interface StreakBadgeProps {
   streak: number;
@@ -8,10 +9,16 @@ interface StreakBadgeProps {
 }
 
 export default function StreakBadge({ streak, dateLabel }: StreakBadgeProps) {
+  const { language } = useLanguage();
+  const copy =
+    language === "mn"
+      ? { today: "Өнөөдөр", days: "хоног" }
+      : { today: "Today", days: "days" };
+
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-border bg-surface px-6 py-4">
+    <div className="flex items-center justify-between rounded-[28px] border border-border bg-surface/80 px-6 py-5">
       <div>
-        <p className="text-sm text-muted">Today</p>
+        <p className="text-sm text-muted">{copy.today}</p>
         <p className="text-lg font-display text-text">{dateLabel}</p>
       </div>
       <motion.div
@@ -20,7 +27,7 @@ export default function StreakBadge({ streak, dateLabel }: StreakBadgeProps) {
         transition={{ duration: 2.4, repeat: Infinity }}
       >
         <span className="text-lg">🔥</span>
-        <span className="font-mono">{streak} days</span>
+        <span className="font-mono">{streak} {copy.days}</span>
       </motion.div>
     </div>
   );

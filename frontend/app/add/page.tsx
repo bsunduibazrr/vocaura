@@ -10,12 +10,34 @@ import { motion } from "framer-motion";
 import ParallaxWrap from "../../components/ParallaxWrap";
 import { useUser } from "@clerk/nextjs";
 import AuthGate from "../../components/AuthGate";
+import { useLanguage } from "../../components/LanguageProvider";
 
 export default function AddPage() {
   const { user, isLoaded } = useUser();
+  const { language } = useLanguage();
   const authLoading = !isLoaded;
   const [todayWords, setTodayWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
+  const copy =
+    language === "mn"
+      ? {
+          authTitle: "Үг нэмэхийн тулд нэвтэрнэ үү",
+          authMessage: "Өөрийн хувийн үгийн сангаа үүсгэхийн тулд бүртгэлтэй байна.",
+          links: [
+            { href: "/", label: "Нүүр рүү буцах", icon: <FiHome /> },
+            { href: "/quiz", label: "Шалгалт руу очих", icon: <FiZap /> },
+            { href: "/stats", label: "Статистик харах", icon: <FiBarChart2 /> },
+          ],
+        }
+      : {
+          authTitle: "Sign in to add words",
+          authMessage: "Create your account to build a personal vocabulary deck.",
+          links: [
+            { href: "/", label: "Back to Home", icon: <FiHome /> },
+            { href: "/quiz", label: "Go to Quiz", icon: <FiZap /> },
+            { href: "/stats", label: "View Stats", icon: <FiBarChart2 /> },
+          ],
+        };
 
   useEffect(() => {
     const load = async () => {
@@ -38,8 +60,8 @@ export default function AddPage() {
   if (!authLoading && !user) {
     return (
       <AuthGate
-        title="Sign in to add words"
-        message="Create your account to build a personal vocabulary deck."
+        title={copy.authTitle}
+        message={copy.authMessage}
       />
     );
   }
@@ -61,19 +83,7 @@ export default function AddPage() {
         animate="show"
         variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
       >
-        {[{
-          href: "/",
-          label: "Back to Home",
-          icon: <FiHome />
-        }, {
-          href: "/quiz",
-          label: "Go to Quiz",
-          icon: <FiZap />
-        }, {
-          href: "/stats",
-          label: "View Stats",
-          icon: <FiBarChart2 />
-        }].map((item) => (
+        {copy.links.map((item) => (
           <motion.div key={item.href} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
             <ParallaxWrap className="parallax-soft">
               <Link

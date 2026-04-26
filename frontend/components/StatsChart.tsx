@@ -2,6 +2,7 @@
 
 import { ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import type { DayStats } from "../lib/types";
+import { useLanguage } from "./LanguageProvider";
 
 interface StatsChartProps {
   data: DayStats[];
@@ -25,6 +26,12 @@ function formatLabel(date: string) {
 }
 
 export default function StatsChart({ data, period }: StatsChartProps) {
+  const { language } = useLanguage();
+  const copy =
+    language === "mn"
+      ? { words: "Үгс", score: "Оноо", day: "Өдөр" }
+      : { words: "Words", score: "Score", day: "Day" };
+
   return (
     <div className="h-[360px] w-full rounded-2xl border border-border bg-surface p-4">
       <ResponsiveContainer width="100%" height="100%">
@@ -43,8 +50,8 @@ export default function StatsChart({ data, period }: StatsChartProps) {
               borderRadius: 12,
               color: "rgb(var(--text))"
             }}
-            formatter={(value, name) => [value, name === "wordsAdded" ? "Words" : "Score"]}
-            labelFormatter={(label) => `Day: ${label}`}
+            formatter={(value, name) => [value, name === "wordsAdded" ? copy.words : copy.score]}
+            labelFormatter={(label) => `${copy.day}: ${label}`}
           />
           <Bar dataKey="wordsAdded" fill="rgb(var(--accent))" radius={[6, 6, 0, 0]} />
           <Line type="monotone" dataKey="quizScore" stroke="rgb(var(--accent3))" strokeWidth={2} dot={false} />

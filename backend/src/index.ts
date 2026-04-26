@@ -19,7 +19,14 @@ dotenv.config();
 
 const app = express();
 
-app.use(clerkMiddleware());
+app.use(
+  clerkMiddleware({
+    publishableKey:
+      process.env.CLERK_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    secretKey: process.env.CLERK_SECRET_KEY,
+  }),
+);
 app.use(
   cors({
     origin: process.env.FRONTEND_ORIGIN || "http://localhost:3000",
